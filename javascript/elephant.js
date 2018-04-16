@@ -10,6 +10,7 @@ class ElephantFilterForm
 		this.div.append(input);
 
 		var button = $("<button>");
+		button.text('search');
 
 		button.click((ev) => {
 			callback(input.val());
