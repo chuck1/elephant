@@ -12,13 +12,9 @@ def breakpoint(): import pdb; pdb.set_trace();
     ({'a': 1}, {'a': 1, 'b': 2}),
     ({'a': 1}, {}),
     ])
-def test_1(a, b):
+def test_1(client, database, a, b):
 
-    client = pymongo.MongoClient()
-
-    db_name = 'test_' + str(int(time.time()))
-
-    db = client[db_name]
+    db = database
     
     cl = elephant.collection_local.CollectionLocal(db.test)
     
