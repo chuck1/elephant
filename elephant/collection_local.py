@@ -2,6 +2,8 @@ import json
 import time
 import hashlib
 
+import bson.json_util
+
 import aardvark
 
 class CollectionLocal:
@@ -56,7 +58,12 @@ class CollectionLocal:
                 }
         
         m = hashlib.md5()
-        m.update(json.dumps(commit).encode())
+        
+        #s = json.dumps(commit)
+        s = bson.json_util.dumps(commit)
+
+        m.update(s.encode())
+
         h = m.hexdigest()
 
         commit['id'] = h
@@ -83,6 +90,9 @@ class CollectionLocal:
             return res
 
     def put(self, ref, _id, item):
+        # dont want to track _id or _elephant
+        for k in ['_id', '_elephant']:
+            if k in item: del item[k]
 
         if _id is None:
             return self._put_new(ref, item)
@@ -115,6 +125,16 @@ class CollectionLocal:
         res = self.collection.update_one({'_id': _id}, update)
 
         return res
+
+    def get_content(self, ref, file_id):
+        f = self.collection.find_one({'_id': file_id})
+
+        assert ref == f['_elephant']['ref']
+
+        del f['_id']
+        del f['_elephant']
+        return f
+
 
 def diffs_keys_set(diffs):
     for d in diffs:
