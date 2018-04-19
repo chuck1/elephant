@@ -126,12 +126,11 @@ class CollectionLocal:
 
         return res
 
-    def get_content(self, ref, file_id):
-        f = self.collection.find_one({'_id': file_id})
+    def get_content(self, ref, filt):
+        f = self.collection.find_one(filt)
 
         assert ref == f['_elephant']['ref']
 
-        del f['_id']
         del f['_elephant']
         return f
 
