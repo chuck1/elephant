@@ -143,9 +143,9 @@ class DatabaseGlobal:
 
         return res
 
-    def get_content(self, file_id):
-        f = self.db.files.find_one({'_id': file_id})
-        del f['_id']
+    def get_content(self, filt):
+        f = self.db.files.find_one(filt)
+        if f is None: return
         del f['_elephant']
         return f
 
