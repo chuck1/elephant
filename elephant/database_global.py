@@ -118,6 +118,11 @@ class DatabaseGlobal:
 
     def put(self, file_id, item):
 
+        item = dict(item)
+
+        if '_temp' in item:
+            del item['_temp']
+
         if file_id is None:
             return self._put_new(item)
 
