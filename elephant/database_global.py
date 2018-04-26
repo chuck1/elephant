@@ -1,8 +1,11 @@
+import datetime
 import json
 import time
 import hashlib
 
 import aardvark
+
+def breakpoint(): import pdb; pdb.set_trace();
 
 class DatabaseGlobal:
     """
@@ -89,7 +92,7 @@ class DatabaseGlobal:
         ref = self.ref()
         
         commit = {
-                'time': time.time(),
+                'time': datetime.datetime.utcnow(),
                 'parent': ref['commit_id'],
                 'files': files_changes,
                 }
@@ -119,9 +122,12 @@ class DatabaseGlobal:
     def put(self, file_id, item):
 
         item = dict(item)
-
-        if '_temp' in item:
-            del item['_temp']
+        
+        # remove all keys that start with "_"
+        # starts with "_" is used to identify fields controlled by elephant and should not be set by the user
+        keys_to_delete = [k for k in item.keys() if k.startswith("_")]
+        for k in keys_to_delete:
+            del item[k]
 
         if file_id is None:
             return self._put_new(item)
@@ -151,11 +157,33 @@ class DatabaseGlobal:
     def get_content(self, filt):
         f = self.db.files.find_one(filt)
         if f is None: return
-        del f['_elephant']
         return f
 
     def find(self, filt):
-        return self.db.files.find(filt)
+
+        files = list(self.db.files.find(filt))
+        
+        files_ids = [f["_id"] for f in files]
+
+        commits = list(self.db.commits.find({"files.file_id": {"$in": files_ids}}))
+        
+
+        for f in files:
+            if "_temp" not in f:
+                f["_temp"] = {}
+            
+            commits1 = [c for c in commits if f["_id"] in [l["file_id"] for l in c["files"]]]
+            
+            if not commits1:
+                #print(f["_id"])
+                #for c in commits:
+                #    print([l["file_id"] for l in c["files"]])
+                print("didnt find any commits!")
+            
+
+            f["_temp"]["commits"] = commits1
+
+            yield f
 
 def diffs_keys_set(diffs):
     for d in diffs:
