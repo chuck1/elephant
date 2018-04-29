@@ -1,12 +1,44 @@
 import json
 import time
 import hashlib
-
+import datetime
+import pprint
 import bson.json_util
 
 import aardvark
 
-class CollectionLocal:
+import elephant.util
+
+class File:
+    def __init__(self, d):
+        self.d = d
+
+    def _commits(self, ref = None):
+        def _find(commit_id):
+            for c in self.d["_temp"]["commits"]:
+                if c["_id"] == commit_id:
+                    return c
+
+        ref = ref or self.d["_elephant"]["ref"]
+
+        if isinstance(ref, bson.objectid.ObjectId):
+            id0 = ref
+        else:
+            id0 = self.d["_elephant"]["refs"][ref]
+
+        c0 = _find(id0)
+
+        while c0:
+            yield c0
+            
+            c0 = _find(c0["parent"])
+
+    def commits(self, ref = None):
+        return reversed(list(self._commits()))
+
+        
+
+class Local:
     """
     This implements the per-item version concept
 
@@ -45,49 +77,41 @@ class CollectionLocal:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, collection):
-        self.collection = collection
+    def __init__(self, db, file_class = None):
+        self.db = db
+        self.file_class = file_class or File
 
-    def _create_commit(self, parent, diffs):
+    def _create_commit(self, file_id, parent, diffs):
         diffs_array = [d.to_array() for d in diffs]
         
         commit = {
+                'file': file_id,
                 'parent': parent,
                 'changes': diffs_array,
-                'time': time.time(),
+                'time': datetime.datetime.utcnow(),
                 }
-        
-        m = hashlib.md5()
-        
-        #s = json.dumps(commit)
-        s = bson.json_util.dumps(commit)
+ 
+        res = self.db.commits.insert_one(commit)
 
-        m.update(s.encode())
-
-        h = m.hexdigest()
-
-        commit['id'] = h
-
-        return h, commit
+        return res.inserted_id
 
     def _put_new(self, ref, item):
-            diffs = list(aardvark.diff({}, item))
+        diffs = list(aardvark.diff({}, item))
 
-            h, commit = self._create_commit(None, diffs)
+        commit_id = self._create_commit(None, None, diffs)
 
-            item1 = dict(item)
+        item1 = dict(item)
 
-            item1['_elephant'] = {
-                    "ref": ref,
-                    "refs": {ref: h},
-                    "commits": {
-                        h: commit,
-                        },
-                    }
-    
-            res = self.collection.insert_one(item1)
+        item1['_elephant'] = {
+                "ref": ref,
+                "refs": {ref: commit_id},
+                }
 
-            return res
+        res = self.db.files.insert_one(item1)
+
+        self.db.commits.update_one({"_id": commit_id}, {"$set": {"file": res.inserted_id}})
+
+        return res
 
     def put(self, ref, _id, item):
         # dont want to track _id or _elephant
@@ -97,7 +121,7 @@ class CollectionLocal:
         if _id is None:
             return self._put_new(ref, item)
 
-        item0 = self.collection.find_one({'_id': _id})
+        item0 = self.db.files.find_one({'_id': _id})
 
         el0 = item0['_elephant']
         el1 = dict(el0)
@@ -112,57 +136,32 @@ class CollectionLocal:
         
         parent = el0['refs'][ref]
  
-        h, commit = self._create_commit(parent, diffs)
+        commit_id = self._create_commit(_id, parent, diffs)
         
-        el1['commits'][h] = commit
+        el1['refs'][ref] = commit_id
 
-        el1['refs'][ref] = h
-
-        update = diffs_to_update(diffs, item)
+        update = elephant.util.diffs_to_update(diffs, item)
         
         update['$set']['_elephant'] = el1
 
-        res = self.collection.update_one({'_id': _id}, update)
+        res = self.db.files.update_one({'_id': _id}, update)
 
         return res
 
     def get_content(self, ref, filt):
-        f = self.collection.find_one(filt)
+        f = self.db.files.find_one(filt)
 
         assert ref == f['_elephant']['ref']
 
-        del f['_elephant']
-        return f
-
-
-def diffs_keys_set(diffs):
-    for d in diffs:
-        if len(d.address.lines) > 1:
-            yield d.address.lines[0].key
-
-        if isinstance(d, aardvark.OperationRemove):
-            continue
+        commits = list(self.db.commits.find({"file": f["_id"]}))
         
-        yield d.address.lines[0].key
+        f["_temp"] = {}
 
-def diffs_keys_unset(diffs):
-    for d in diffs:
-        if isinstance(d, aardvark.OperationRemove):
-            if len(d.address.lines) == 1:
-                yield d.address.lines[0].key
+        f["_temp"]["commits"] = commits
 
-def diffs_to_update(diffs, item):
+        return self.file_class(f)
 
-    update_unset = dict((k, "") for k in diffs_keys_unset(diffs))
 
-    update = {
-            '$set': dict((k, item[k]) for k in diffs_keys_set(diffs)),
-            }
-
-    if update_unset:
-        update['$unset'] = update_unset
-
-    return update
 
 
 

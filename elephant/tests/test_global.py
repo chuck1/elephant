@@ -3,7 +3,7 @@ import time
 import pymongo
 import pytest
 
-import elephant.database_global
+import elephant.global_
 
 def breakpoint(): import pdb; pdb.set_trace();
 
@@ -17,7 +17,7 @@ def test_1(client, database, a, b):
 
     db = database
     
-    cl = elephant.database_global.DatabaseGlobal(db, "master")
+    cl = elephant.global_.DatabaseGlobal(db, "master")
     
     res = cl.put(None, a)
 
