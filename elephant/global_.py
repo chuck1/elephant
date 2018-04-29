@@ -4,7 +4,9 @@ import hashlib
 
 import aardvark
 
-class DatabaseGlobal:
+import elephant.util
+
+class Global:
     """
     This implements the collection-wide commit concept
     
@@ -59,9 +61,10 @@ class DatabaseGlobal:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, db, ref_name):
+    def __init__(self, db, ref_name, file_class = None):
         self.db = db
         self.ref_name = ref_name
+        self.file_class = file_class or elephant.file.File
 
     def ref(self):
         ref = self.db.refs.find_one({'name': self.ref_name})
@@ -140,7 +143,7 @@ class DatabaseGlobal:
         
         commit = self._create_commit([self.file_changes(file_id, diffs)])
         
-        update = diffs_to_update(diffs, item)
+        update = elephant.util.diffs_to_update(diffs, item)
         
         update['$set']['_elephant'] = {'commit_id': commit['_id']}
 
@@ -150,42 +153,18 @@ class DatabaseGlobal:
 
     def get_content(self, filt):
         f = self.db.files.find_one(filt)
+        
         if f is None: return
-        del f['_elephant']
-        return f
+        
+        commits = list(self.db.commits.find({"file": f["_id"]}))
+        
+        f["_temp"] = {}
+
+        f["_temp"]["commits"] = commits
+
+        return self.file_class(f)
 
     def find(self, filt):
         return self.db.files.find(filt)
-
-def diffs_keys_set(diffs):
-    for d in diffs:
-        if len(d.address.lines) > 1:
-            yield d.address.lines[0].key
-
-        if isinstance(d, aardvark.OperationRemove):
-            continue
-        
-        yield d.address.lines[0].key
-
-def diffs_keys_unset(diffs):
-    for d in diffs:
-        if isinstance(d, aardvark.OperationRemove):
-            if len(d.address.lines) == 1:
-                yield d.address.lines[0].key
-
-def diffs_to_update(diffs, item):
-
-    update_unset = dict((k, "") for k in diffs_keys_unset(diffs))
-
-    update = {
-            '$set': dict((k, item[k]) for k in diffs_keys_set(diffs)),
-            }
-
-    if update_unset:
-        update['$unset'] = update_unset
-
-    return update
-
-
 
 
