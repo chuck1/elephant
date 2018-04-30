@@ -1,10 +1,40 @@
 import json
 import time
 import hashlib
+import bson
 
 import aardvark
 
 import elephant.util
+
+class File:
+    def __init__(self, e, d):
+        self.e = e
+        self.d = d
+
+    def _commits(self, ref):
+        def _find(commit_id):
+            for c in self.d["_temp"]["commits"]:
+                if c["_id"] == commit_id:
+                    return c
+
+        #ref = ref or self.d["_elephant"]["ref"]
+
+        if isinstance(ref, bson.objectid.ObjectId):
+            id0 = ref
+        else:
+            ref = self.e.db.refs.find_one({'name': ref})
+            id0 = ref["commit_id"]
+
+        c0 = _find(id0)
+
+        while c0:
+            yield c0
+            
+            c0 = _find(c0["parent"])
+
+    def commits(self, ref):
+        return reversed(list(self._commits(ref)))
 
 class Global:
     """
@@ -61,11 +91,13 @@ class Global:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, db, ref_name, file_class = None):
+    def __init__(self, db, ref_name, file_factory = None):
         self.db = db
         self.ref_name = ref_name
-        self.file_class = file_class or elephant.file.File
-
+    
+    def _factory(self, d):
+        return File(self, d)
+    
     def ref(self):
         ref = self.db.refs.find_one({'name': self.ref_name})
 
@@ -162,9 +194,17 @@ class Global:
 
         f["_temp"]["commits"] = commits
 
-        return self.file_class(f)
+        return self._factory(f)
 
     def find(self, filt):
         return self.db.files.find(filt)
+
+
+
+
+
+
+
+
 
 

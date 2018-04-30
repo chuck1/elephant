@@ -34,7 +34,7 @@ def test_1(client, database, a, b):
         pprint.pprint(c)
 
     print('commits')
-    for c in item.commits():
+    for c in item.commits("master"):
         pprint.pprint(c)
 
         item.commits(c["_id"])
