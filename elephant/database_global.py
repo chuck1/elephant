@@ -7,6 +7,16 @@ import aardvark
 
 def breakpoint(): import pdb; pdb.set_trace();
 
+def clean_document(d0):
+    d1 = dict(d0)
+
+    keys_to_delete = [k for k in d1.keys() if k.startswith("_")]
+
+    for k in keys_to_delete:
+        del d1[k]
+
+    return d1
+   
 class DatabaseGlobal:
     """
     This implements the collection-wide commit concept
@@ -125,9 +135,8 @@ class DatabaseGlobal:
         
         # remove all keys that start with "_"
         # starts with "_" is used to identify fields controlled by elephant and should not be set by the user
-        keys_to_delete = [k for k in item.keys() if k.startswith("_")]
-        for k in keys_to_delete:
-            del item[k]
+
+        item = clean_document(item)
 
         if file_id is None:
             return self._put_new(item)
@@ -157,6 +166,16 @@ class DatabaseGlobal:
     def get_content(self, filt):
         f = self.db.files.find_one(filt)
         if f is None: return
+
+        commits = list(self.db.commits.find({"files.file_id": f['_id']}))
+        
+        assert commits
+
+        if "_temp" not in f:
+            f["_temp"] = {}
+
+        f["_temp"]["commits"] = commits
+
         return f
 
     def find(self, filt):
@@ -167,7 +186,6 @@ class DatabaseGlobal:
 
         commits = list(self.db.commits.find({"files.file_id": {"$in": files_ids}}))
         
-
         for f in files:
             if "_temp" not in f:
                 f["_temp"] = {}
@@ -178,8 +196,9 @@ class DatabaseGlobal:
                 #print(f["_id"])
                 #for c in commits:
                 #    print([l["file_id"] for l in c["files"]])
-                print("didnt find any commits!")
+                print(f"didnt find any commits for {f}")
             
+            assert commits1
 
             f["_temp"]["commits"] = commits1
 
