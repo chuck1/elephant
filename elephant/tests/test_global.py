@@ -3,7 +3,7 @@ import time
 import pymongo
 import pytest
 
-import elephant.database_global
+import elephant.global_
 
 def breakpoint(): import pdb; pdb.set_trace();
 
@@ -17,7 +17,7 @@ def test_1(client, database, a, b):
 
     db = database
     
-    cl = elephant.database_global.DatabaseGlobal(db, "master")
+    cl = elephant.global_.Global(db, "master")
     
     res = cl.put(None, a)
 
@@ -25,14 +25,19 @@ def test_1(client, database, a, b):
 
     res = cl.put(_id, b)
     
-    item = db.files.find_one({'_id': _id})
-
-    item1 = dict(item)
-    del item1['_id']
-    del item1['_elephant']
+    item = cl.get_content({'_id': _id})
     
-    assert item1 == b
-
     print(item)
+
+    print('commits')
+    for c in item.d["_temp"]["commits"]:
+        pprint.pprint(c)
+
+    print('commits')
+    for c in item.commits():
+        pprint.pprint(c)
+
+        item.commits(c["_id"])
+
 
 
