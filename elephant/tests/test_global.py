@@ -1,4 +1,5 @@
 import time
+import pprint
 
 import pymongo
 import pytest

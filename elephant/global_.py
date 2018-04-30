@@ -149,7 +149,7 @@ class Global:
 
         return commit
 
-    def _put_new(self, item):
+    def put_new(self, item):
 
         # need file id to create commit
         res = self.db.files.insert_one(item)
@@ -173,7 +173,7 @@ class Global:
         item = clean_document(item)
 
         if file_id is None:
-            return self._put_new(item)
+            return self.put_new(item)
 
         item0 = self.db.files.find_one({'_id': file_id})
 
