@@ -1,7 +1,8 @@
 import bson
 
 class File:
-    def __init__(self, d):
+    def __init__(self, e, d):
+        self.e = e
         self.d = d
 
     def _commits(self, ref = None):

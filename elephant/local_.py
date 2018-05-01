@@ -49,9 +49,11 @@ class Local:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, db, file_class = None):
+    def __init__(self, db):
         self.db = db
-        self.file_class = file_class or elephant.file.File
+
+    def _factory(self, d):
+        return elephant.file.File(self, d)
 
     def _create_commit(self, file_id, parent, diffs):
         diffs_array = [d.to_array() for d in diffs]
@@ -123,7 +125,7 @@ class Local:
     def get_content(self, ref, filt):
         f = self.db.files.find_one(filt)
 
-        assert ref == f['_elephant']['ref']
+        assert (ref == f['_elephant']['ref']) or (ref == f['_elephant']['refs'][f['_elephant']['ref']])
 
         commits = list(self.db.commits.find({"file": f["_id"]}))
         
@@ -131,8 +133,10 @@ class Local:
 
         f["_temp"]["commits"] = commits
 
-        return self.file_class(f)
+        return self._factory(f)
 
+    def find(self, filt):
+        return [self._factory(d) for d in self.db.files.find(filt)]
 
 
 
