@@ -1,5 +1,39 @@
 import bson
 
+class _AArray:
+    """
+    not for use with local or global
+    for use with regular mongo documents
+    """
+    def __init__(self, coll, d):
+        self.coll = coll
+        self.d = d
+
+    def __getitem__(self, k):
+        return self.d[k]
+
+    def __setitem__(self, k, v):
+        self.d[k] = v
+
+        self.coll.update_one({'_id': self.d['_id']}, {'$set': {k, v}})
+
+    def get(self, k, default):
+        if k in self.d:
+            return self.d[k]
+        else:
+            return default
+
+class Engine:
+    """
+    simple engine for querying a collection and returning _AArray objects
+    """
+    def __init__(self, coll):
+        self.coll = coll
+
+    def find(self, filt):
+        for d in self.coll.find(filt):
+            yield _AArray(self.coll, d)
+
 class File:
     def __init__(self, e, d):
         self.e = e
