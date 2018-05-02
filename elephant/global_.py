@@ -12,6 +12,9 @@ class File:
         self.e = e
         self.d = d
 
+    def update(self, updates):
+        self.e.db.files.update_one({"_id": self.d['_id']}, updates)
+
     def _commits(self, ref):
         def _find(commit_id):
             for c in self.d["_temp"]["commits"]:

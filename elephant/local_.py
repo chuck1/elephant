@@ -124,8 +124,15 @@ class Local:
 
     def get_content(self, ref, filt):
         f = self.db.files.find_one(filt)
-
-        assert (ref == f['_elephant']['ref']) or (ref == f['_elephant']['refs'][f['_elephant']['ref']])
+        if f is None: return None
+        assert f['_elephant']
+        
+        if ref == f['_elephant']['ref']:
+            pass
+        elif ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]:
+            pass
+        else:
+            Exception(f'ref {ref} does not match {f["_elephant"]["ref"]} or {f["_elephant"]["refs"][f["_elephant"]["ref"]]}')
 
         commits = list(self.db.commits.find({"file": f["_id"]}))
         
