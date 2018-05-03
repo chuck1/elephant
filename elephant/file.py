@@ -23,6 +23,9 @@ class _AArray:
         else:
             return default
 
+    def to_array(self):
+        return self.d
+
 class Engine:
     """
     simple engine for querying a collection and returning _AArray objects
@@ -33,6 +36,11 @@ class Engine:
     def find(self, filt):
         for d in self.coll.find(filt):
             yield _AArray(self.coll, d)
+
+    def find_one(self, filt):
+        d = self.coll.find_one(filt)
+        if d is None: return None
+        return _AArray(self.coll, d)
 
 class File:
     def __init__(self, e, d):
