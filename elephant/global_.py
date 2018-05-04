@@ -12,6 +12,20 @@ class File:
         self.e = e
         self.d = d
 
+    def __getitem__(self, k):
+        return self.d[k]
+
+    def __setitem__(self, k, v):
+        self.d[k] = v
+        updates = {'$set': {k: v}}
+        self.e.db.files.update_one({'_id': self.d['_id']}, updates)
+
+    def update_temp(self):
+        """
+        update self.d["_temp"] with calculated values to be stored in the database for querying
+        """
+        pass
+
     def update(self, updates):
         self.e.db.files.update_one({"_id": self.d['_id']}, updates)
 
@@ -109,6 +123,7 @@ class Global:
     def __init__(self, db, ref_name, file_factory = None):
         self.db = db
         self.ref_name = ref_name
+        self._cache = {}
     
     def _factory(self, d):
         return File(self, d)
@@ -153,52 +168,68 @@ class Global:
         return commit
 
     def put_new(self, item):
+        item = clean_document(item)
 
         # need file id to create commit
         res = self.db.files.insert_one(item)
+
         file_id = res.inserted_id
 
         diffs = list(aardvark.diff({}, item))
         
         commit = self._create_commit([self.file_changes(file_id, diffs)])
 
-        self.db.files.update_one({'_id': file_id}, {'$set': {'_elephant': {"commit_id": commit['_id']}}})
+        # save ancestors
+        item1 = dict(item)
+        item1["_id"] = file_id
+        item1["_temp"] = {}
+
+        f = self._factory(item1)
+
+        f.update_temp()
+
+        self.db.files.update_one({'_id': file_id}, {'$set': {
+            '_elephant': {"commit_id": commit['_id']},
+            '_temp': f.d["_temp"],
+            }})
 
         return res
 
     def put(self, file_id, item):
 
-        item = dict(item)
-        
-        # remove all keys that start with "_"
-        # starts with "_" is used to identify fields controlled by elephant and should not be set by the user
-
-        item = clean_document(item)
-
         if file_id is None:
             return self.put_new(item)
 
+        item = clean_document(item)
+
         item0 = self.db.files.find_one({'_id': file_id})
 
-        el0 = item0['_elephant']
+        #el0 = item0['_elephant']
+        #el1 = dict(el0)
 
-        el1 = dict(el0)
-
-        item1 = dict(item0)
-        del item1['_id']
-        del item1['_elephant']
+        item1 = clean_document(item0)
 
         diffs = list(aardvark.diff(item1, item))
         
         commit = self._create_commit([self.file_changes(file_id, diffs)])
         
         update = elephant.util.diffs_to_update(diffs, item)
-        
-        update['$set']['_elephant'] = {'commit_id': commit['_id']}
+
+        update['$set']['_elephant.commit_id'] = commit["_id"]
 
         res = self.db.files.update_one({'_id': file_id}, update)
 
         return res
+
+    def get_file_by_id(self, _id):
+        if _id in self._cache:
+            return self._cache[_id]
+        
+        f = self.get_content({"_id": _id})
+
+        self._cache[_id] = f
+
+        return f
 
     def get_content(self, filt):
         f = self.db.files.find_one(filt)
@@ -240,7 +271,9 @@ class Global:
 
             f["_temp"]["commits"] = commits1
 
-            yield self._factory(f)
+            f1 = self._factory(f)
+            #f1.update_temp()
+            yield f1
 
 
 
