@@ -33,6 +33,25 @@ class Engine:
     def __init__(self, coll):
         self.coll = coll
 
+    def put_new(self, doc):
+        res = self.coll.insert_one(doc)
+        return res
+
+    def put(self, doc_id, doc):
+        if doc_id is None:
+            return self.put_new(doc)
+
+        doc0 = self.coll.find_one({'_id': doc_id})
+        doc0 = clean_document(doc0)
+
+        doc1 = clean_document(doc)
+
+        diffs = list(aardvark.diff(doc0, doc1))
+        
+        update = elephant.util.diffs_to_update(diffs, doc)
+
+        res = self.coll.update_one({'_id': doc_id}, update)
+
     def find(self, filt):
         for d in self.coll.find(filt):
             yield _AArray(self.coll, d)
