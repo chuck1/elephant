@@ -202,7 +202,8 @@ class Global:
 
         item = clean_document(item)
 
-        item0 = self.db.files.find_one({'_id': file_id})
+        f = self.get_content({'_id': file_id})
+        item0 = dict(f.d)
 
         #el0 = item0['_elephant']
         #el1 = dict(el0)
@@ -210,12 +211,16 @@ class Global:
         item1 = clean_document(item0)
 
         diffs = list(aardvark.diff(item1, item))
+
+        aardvark.apply(f.d, diffs)
+        f.update_temp()
         
         commit = self._create_commit([self.file_changes(file_id, diffs)])
         
         update = elephant.util.diffs_to_update(diffs, item)
 
         update['$set']['_elephant.commit_id'] = commit["_id"]
+        update['$set']['_temp'] = f.d["_temp"]
 
         res = self.db.files.update_one({'_id': file_id}, update)
 
