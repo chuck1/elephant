@@ -55,16 +55,7 @@ class File:
 
 def breakpoint(): import pdb; pdb.set_trace();
 
-def clean_document(d0):
-    d1 = dict(d0)
-
-    keys_to_delete = [k for k in d1.keys() if k.startswith("_")]
-
-    for k in keys_to_delete:
-        del d1[k]
-
-    return d1
-   
+  
 class Global:
     """
     This implements the collection-wide commit concept
@@ -168,7 +159,7 @@ class Global:
         return commit
 
     def put_new(self, item):
-        item = clean_document(item)
+        item = elephant.util.clean_document(item)
 
         # need file id to create commit
         res = self.db.files.insert_one(item)
@@ -200,7 +191,7 @@ class Global:
         if file_id is None:
             return self.put_new(item)
 
-        item = clean_document(item)
+        item = elephant.util.clean_document(item)
 
         f = self.get_content({"_id": file_id})
         item0 = dict(f.d)
@@ -208,7 +199,7 @@ class Global:
         #el0 = item0['_elephant']
         #el1 = dict(el0)
 
-        item1 = clean_document(item0)
+        item1 = elephant.util.clean_document(item0)
 
         diffs = list(aardvark.diff(item1, item))
 

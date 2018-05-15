@@ -1,6 +1,16 @@
 
 import aardvark
 
+def clean_document(d0):
+    d1 = dict(d0)
+
+    keys_to_delete = [k for k in d1.keys() if k.startswith("_")]
+
+    for k in keys_to_delete:
+        del d1[k]
+
+    return d1
+ 
 def diffs_keys_set(diffs):
     for d in diffs:
         if len(d.address.lines) > 1:

@@ -1,4 +1,6 @@
+import aardvark
 import bson
+import elephant.util
 
 class _AArray:
     """
@@ -33,6 +35,9 @@ class Engine:
     def __init__(self, coll):
         self.coll = coll
 
+    def _factory(self, d):
+        return _AArray(self.coll, d)
+
     def put_new(self, doc):
         res = self.coll.insert_one(doc)
         return res
@@ -42,9 +47,9 @@ class Engine:
             return self.put_new(doc)
 
         doc0 = self.coll.find_one({'_id': doc_id})
-        doc0 = clean_document(doc0)
+        doc0 = elephant.util.clean_document(doc0)
 
-        doc1 = clean_document(doc)
+        doc1 = elephant.util.clean_document(doc)
 
         diffs = list(aardvark.diff(doc0, doc1))
         
@@ -54,12 +59,12 @@ class Engine:
 
     def find(self, filt):
         for d in self.coll.find(filt):
-            yield _AArray(self.coll, d)
+            yield self._factory(d)
 
     def find_one(self, filt):
         d = self.coll.find_one(filt)
         if d is None: return None
-        return _AArray(self.coll, d)
+        return self._factory(d)
 
 class File:
     def __init__(self, e, d):
