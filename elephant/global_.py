@@ -251,7 +251,6 @@ class Global:
         
         pipe = [
             {'$match': query},
-            {'$addFields': {'due_exists': {'$not': {'$eq': ['$due', None]}}}},
             ]
         pipe += pipe1
 
