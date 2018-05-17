@@ -13,6 +13,11 @@ class File:
         self.e = e
         self.d = d
 
+    def get(self, k, default):
+        if k in self.d:
+            return self.d[k]
+        return default
+
     def __getitem__(self, k):
         return self.d[k]
 
@@ -246,18 +251,7 @@ class Global:
 
         return self._factory(f)
 
-    def find(self, query, pipe1=[]):
-        n = 10
-        
-        pipe = [
-            {'$match': query},
-            ]
-        pipe += pipe1
-
-        c = self.db.files.aggregate(pipe)
-
-        files = list(c)
-        
+    def _add_commits(self, files):
         files_ids = [f["_id"] for f in files]
 
         commits = list(self.db.commits.find({"files.file_id": {"$in": files_ids}}))
@@ -282,6 +276,32 @@ class Global:
             #f1.update_temp()
             yield f1
 
+    def find(self, query, pipe1=[]):
+        n = 30
+        
+        pipe = [
+            {'$match': query},
+            ]
+        pipe += pipe1
+
+        c = self.db.files.aggregate(pipe)
+
+        files0 = []
+        files1 = []
+
+        for i in range(n):
+            try:
+                files0.append(next(c))
+            except StopIteration:
+                break
+        
+        yield list(self._add_commits(files0))
+
+        for f in c:
+            files1.append(f)
+        
+        if files1:
+            yield list(self._add_commits(files1))
 
 
 
