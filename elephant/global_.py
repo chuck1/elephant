@@ -1,3 +1,4 @@
+import itertools
 import datetime
 import json
 import time
@@ -245,9 +246,18 @@ class Global:
 
         return self._factory(f)
 
-    def find(self, filt):
+    def find(self, query, pipe1=[]):
+        n = 10
+        
+        pipe = [
+            {'$match': query},
+            {'$addFields': {'due_exists': {'$not': {'$eq': ['$due', None]}}}},
+            ]
+        pipe += pipe1
 
-        files = list(self.db.files.find(filt))
+        c = self.db.files.aggregate(pipe)
+
+        files = list(c)
         
         files_ids = [f["_id"] for f in files]
 
