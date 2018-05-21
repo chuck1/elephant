@@ -35,6 +35,9 @@ class File:
     def update(self, updates):
         self.e.db.files.update_one({"_id": self.d['_id']}, updates)
 
+    def put(self):
+        return self.e.put(self.d["_id"], self.d)
+
     def _commits(self, ref):
         def _find(commit_id):
             for c in self.d["_temp"]["commits"]:
@@ -210,8 +213,21 @@ class Global:
         diffs = list(aardvark.diff(item1, item))
 
         aardvark.apply(f.d, diffs)
+
         f.update_temp()
-        
+
+        print(diffs)
+        if not diffs:
+            print("diffs is empty")
+            
+            if item0.get("temp", {}) != f.d["_temp"]:
+                update = {'$set': {}}
+                update['$set']['_temp'] = f.d["_temp"]
+                print("temp has changed")
+                res = self.db.files.update_one({'_id': file_id}, update)
+            
+            return
+
         commit = self._create_commit([self.file_changes(file_id, diffs)])
         
         update = elephant.util.diffs_to_update(diffs, item)
