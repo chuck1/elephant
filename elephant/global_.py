@@ -219,14 +219,10 @@ class Global:
 
         f.update_temp()
 
-        print(diffs)
         if not diffs:
-            print("diffs is empty")
-            
             if item0.get("temp", {}) != f.d["_temp"]:
                 update = {'$set': {}}
                 update['$set']['_temp'] = f.d["_temp"]
-                print("temp has changed")
                 res = self.db.files.update_one({'_id': file_id}, update)
             
             return
