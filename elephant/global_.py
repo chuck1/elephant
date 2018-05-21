@@ -32,6 +32,9 @@ class File:
         """
         pass
 
+    def delete(self):
+        self.e.db.files.delete_one({'_id': self.d["_id"]})
+
     def update(self, updates):
         self.e.db.files.update_one({"_id": self.d['_id']}, updates)
 
