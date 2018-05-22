@@ -18,7 +18,7 @@ def test_1(client, database, a, b):
 
     db = database
     
-    cl = elephant.global_.Global(db, "master")
+    cl = elephant.global_.Global(db.files, db.commits, db.refs, db.queries, "master")
     
     res = cl.put(None, a)
 
