@@ -123,11 +123,12 @@ class Global:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, coll_files, coll_commits, coll_refs, coll_queries, ref_name, file_factory = None):
+    def __init__(self, coll_files, coll_commits, coll_refs, e_queries, ref_name, file_factory = None):
         self.coll_files = coll_files
         self.coll_commits = coll_commits
         self.coll_refs = coll_refs
-        self.coll_queries = coll_queries
+
+        self.e_queries = e_queries
 
         self.ref_name = ref_name
         self._cache = {}
