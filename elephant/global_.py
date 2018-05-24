@@ -38,8 +38,8 @@ class File:
     def update(self, updates):
         self.e.coll_files.update_one({"_id": self.d['_id']}, updates)
 
-    def put(self):
-        return self.e.put(self.d["_id"], self.d)
+    def put(self, user_id):
+        return self.e.put(self.d["_id"], self.d, user_id)
 
     def _commits(self, ref):
         def _find(commit_id):
@@ -132,7 +132,16 @@ class Global:
 
         self.ref_name = ref_name
         self._cache = {}
-    
+
+    def pipe1(self, sort=None):
+        # for mongo aggregate
+        if sort is not None:
+            return [
+                    {'$sort': bson.son.SON(sort)}
+                    ]
+        else:
+            return []
+ 
     def _factory(self, d):
         return File(self, d)
     
@@ -157,14 +166,17 @@ class Global:
                 'changes': diffs_array,
                 }
 
-    def _create_commit(self, files_changes):
+    def _create_commit(self, files_changes, user_id):
 
         ref = self.ref()
         
+        assert user_id is not None
+
         commit = {
                 'time': datetime.datetime.utcnow(),
                 'parent': ref['commit_id'],
                 'files': files_changes,
+                'user': user_id,
                 }
         
         res = self.coll_commits.insert_one(commit)
@@ -175,7 +187,7 @@ class Global:
 
         return commit
 
-    def put_new(self, item):
+    def put_new(self, item, user_id):
         item = elephant.util.clean_document(item)
 
         # need file id to create commit
@@ -185,7 +197,7 @@ class Global:
 
         diffs = list(aardvark.diff({}, item))
         
-        commit = self._create_commit([self.file_changes(file_id, diffs)])
+        commit = self._create_commit([self.file_changes(file_id, diffs)], user_id)
 
         # save ancestors
         item1 = dict(item)
@@ -203,10 +215,10 @@ class Global:
 
         return res
 
-    def put(self, file_id, item):
+    def put(self, file_id, item, user_id):
 
         if file_id is None:
-            return self.put_new(item)
+            return self.put_new(item, user_id)
 
         item = elephant.util.clean_document(item)
 
@@ -232,7 +244,7 @@ class Global:
             
             return
 
-        commit = self._create_commit([self.file_changes(file_id, diffs)])
+        commit = self._create_commit([self.file_changes(file_id, diffs)], user_id)
         
         update = elephant.util.diffs_to_update(diffs, item)
 

@@ -55,7 +55,7 @@ class Local:
     def _factory(self, d):
         return elephant.file.File(self, d)
 
-    def _create_commit(self, file_id, parent, diffs):
+    def _create_commit(self, file_id, parent, diffs, user_id):
         diffs_array = [d.to_array() for d in diffs]
         
         commit = {
@@ -63,6 +63,7 @@ class Local:
                 'parent': parent,
                 'changes': diffs_array,
                 'time': datetime.datetime.utcnow(),
+                'user': user_id,
                 }
  
         res = self.db.commits.insert_one(commit)
@@ -87,13 +88,13 @@ class Local:
 
         return res
 
-    def put(self, ref, _id, item):
+    def put(self, ref, _id, item, user_id):
         # dont want to track _id or _elephant
         for k in ['_id', '_elephant']:
             if k in item: del item[k]
 
         if _id is None:
-            return self._put_new(ref, item)
+            return self._put_new(ref, item, user_id)
 
         item0 = self.db.files.find_one({'_id': _id})
 
@@ -110,7 +111,7 @@ class Local:
         
         parent = el0['refs'][ref]
  
-        commit_id = self._create_commit(_id, parent, diffs)
+        commit_id = self._create_commit(_id, parent, diffs, user_id)
         
         el1['refs'][ref] = commit_id
 
