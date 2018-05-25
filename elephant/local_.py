@@ -49,8 +49,9 @@ class Local:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, coll, e_queries):
+        self.coll = coll
+        self.e_queries = e_queries
 
     def _factory(self, d):
         return elephant.file.File(self, d)
@@ -66,14 +67,14 @@ class Local:
                 'user': user_id,
                 }
  
-        res = self.db.commits.insert_one(commit)
+        res = self.coll.commits.insert_one(commit)
 
         return res.inserted_id
 
-    def _put_new(self, ref, item):
+    def _put_new(self, ref, item, user_id):
         diffs = list(aardvark.diff({}, item))
 
-        commit_id = self._create_commit(None, None, diffs)
+        commit_id = self._create_commit(None, None, diffs, user_id)
 
         item1 = dict(item)
 
@@ -82,9 +83,9 @@ class Local:
                 "refs": {ref: commit_id},
                 }
 
-        res = self.db.files.insert_one(item1)
+        res = self.coll.files.insert_one(item1)
 
-        self.db.commits.update_one({"_id": commit_id}, {"$set": {"file": res.inserted_id}})
+        self.coll.commits.update_one({"_id": commit_id}, {"$set": {"file": res.inserted_id}})
 
         return res
 
@@ -96,7 +97,7 @@ class Local:
         if _id is None:
             return self._put_new(ref, item, user_id)
 
-        item0 = self.db.files.find_one({'_id': _id})
+        item0 = self.coll.files.find_one({'_id': _id})
 
         el0 = item0['_elephant']
         el1 = dict(el0)
@@ -119,12 +120,12 @@ class Local:
         
         update['$set']['_elephant'] = el1
 
-        res = self.db.files.update_one({'_id': _id}, update)
+        res = self.coll.files.update_one({'_id': _id}, update)
 
         return res
 
     def get_content(self, ref, filt):
-        f = self.db.files.find_one(filt)
+        f = self.coll.files.find_one(filt)
         if f is None: return None
         assert f['_elephant']
         
@@ -135,7 +136,7 @@ class Local:
         else:
             Exception(f'ref {ref} does not match {f["_elephant"]["ref"]} or {f["_elephant"]["refs"][f["_elephant"]["ref"]]}')
 
-        commits = list(self.db.commits.find({"file": f["_id"]}))
+        commits = list(self.coll.commits.find({"file": f["_id"]}))
         
         f["_temp"] = {}
 
@@ -144,7 +145,7 @@ class Local:
         return self._factory(f)
 
     def find(self, filt):
-        return [self._factory(d) for d in self.db.files.find(filt)]
+        return [self._factory(d) for d in self.coll.files.find(filt)]
 
 
 

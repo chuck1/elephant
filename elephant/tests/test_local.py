@@ -16,18 +16,20 @@ def test_1(client, database, a, b):
     print()
 
     db = database
+
+    user_id = db.users.insert_one({}).inserted_id
     
-    cl = elephant.local_.Local(db)
+    e = elephant.local_.Local(db)
     
-    res = cl.put("master", None, a)
+    res = e.put("master", None, a, user_id)
 
     _id = res.inserted_id
 
-    res = cl.put("master", _id, b)
+    res = e.put("master", _id, b, user_id)
     
     print(res)
 
-    item = cl.get_content("master", {'_id': _id})
+    item = e.get_content("master", {'_id': _id})
     
     print(item)
 

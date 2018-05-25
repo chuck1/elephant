@@ -17,16 +17,22 @@ def test_1(client, database, a, b):
     print()
 
     db = database
+   
+    user_id = db.users.insert_one({}).inserted_id
+ 
+    e = elephant.global_.Global(
+            db, 
+            "master",
+            elephant.file.Engine(db.queries),
+            )
     
-    cl = elephant.global_.Global(db.files, db.commits, db.refs, db.queries, "master")
-    
-    res = cl.put(None, a)
+    res = e.put(None, a, user_id)
 
     _id = res.inserted_id
 
-    res = cl.put(_id, b)
+    res = e.put(_id, b, user_id)
     
-    item = cl.get_content({'_id': _id})
+    item = e.get_content({'_id': _id})
     
     print(item)
 

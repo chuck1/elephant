@@ -24,7 +24,7 @@ class File:
     def __setitem__(self, k, v):
         self.d[k] = v
         updates = {'$set': {k: v}}
-        self.e.coll_files.update_one({'_id': self.d['_id']}, updates)
+        self.e.coll.files.update_one({'_id': self.d['_id']}, updates)
 
     def update_temp(self):
         """
@@ -33,10 +33,10 @@ class File:
         pass
 
     def delete(self):
-        self.e.coll_files.delete_one({'_id': self.d["_id"]})
+        self.e.coll.files.delete_one({'_id': self.d["_id"]})
 
     def update(self, updates):
-        self.e.coll_files.update_one({"_id": self.d['_id']}, updates)
+        self.e.coll.files.update_one({"_id": self.d['_id']}, updates)
 
     def put(self, user_id):
         return self.e.put(self.d["_id"], self.d, user_id)
@@ -52,7 +52,7 @@ class File:
         if isinstance(ref, bson.objectid.ObjectId):
             id0 = ref
         else:
-            ref = self.e.coll_refs.find_one({'name': ref})
+            ref = self.e.coll.refs.find_one({'name': ref})
             id0 = ref["commit_id"]
 
         c0 = _find(id0)
@@ -123,10 +123,8 @@ class Global:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, coll_files, coll_commits, coll_refs, e_queries, ref_name, file_factory = None):
-        self.coll_files = coll_files
-        self.coll_commits = coll_commits
-        self.coll_refs = coll_refs
+    def __init__(self, coll, ref_name, e_queries):
+        self.coll = coll
 
         self.e_queries = e_queries
 
@@ -146,7 +144,7 @@ class Global:
         return File(self, d)
     
     def ref(self):
-        ref = self.coll_refs.find_one({'name': self.ref_name})
+        ref = self.coll.refs.find_one({'name': self.ref_name})
 
         if ref is not None: return ref
 
@@ -155,7 +153,7 @@ class Global:
                 'commit_id': None,
                 }
 
-        res = self.coll_refs.insert_one(ref)
+        res = self.coll.refs.insert_one(ref)
 
         return ref
 
@@ -179,11 +177,11 @@ class Global:
                 'user': user_id,
                 }
         
-        res = self.coll_commits.insert_one(commit)
+        res = self.coll.commits.insert_one(commit)
         
         commit['_id'] = res.inserted_id
 
-        self.coll_refs.update_one({'_id': ref['_id']}, {'$set': {'commit_id': res.inserted_id}})
+        self.coll.refs.update_one({'_id': ref['_id']}, {'$set': {'commit_id': res.inserted_id}})
 
         return commit
 
@@ -191,7 +189,7 @@ class Global:
         item = elephant.util.clean_document(item)
 
         # need file id to create commit
-        res = self.coll_files.insert_one(item)
+        res = self.coll.files.insert_one(item)
 
         file_id = res.inserted_id
 
@@ -208,7 +206,7 @@ class Global:
 
         f.update_temp()
 
-        self.coll_files.update_one({'_id': file_id}, {'$set': {
+        self.coll.files.update_one({'_id': file_id}, {'$set': {
             '_elephant': {"commit_id": commit['_id']},
             '_temp': f.d["_temp"],
             }})
@@ -240,7 +238,7 @@ class Global:
             if item0.get("temp", {}) != f.d["_temp"]:
                 update = {'$set': {}}
                 update['$set']['_temp'] = f.d["_temp"]
-                res = self.coll_files.update_one({'_id': file_id}, update)
+                res = self.coll.files.update_one({'_id': file_id}, update)
             
             return
 
@@ -251,7 +249,7 @@ class Global:
         update['$set']['_elephant.commit_id'] = commit["_id"]
         update['$set']['_temp'] = f.d["_temp"]
 
-        res = self.coll_files.update_one({'_id': file_id}, update)
+        res = self.coll.files.update_one({'_id': file_id}, update)
 
         self._cache[file_id] = f
 
@@ -268,11 +266,11 @@ class Global:
         return f
 
     def get_content(self, filt):
-        f = self.coll_files.find_one(filt)
+        f = self.coll.files.find_one(filt)
         
         if f is None: return
 
-        commits = list(self.coll_commits.find({"files.file_id": f['_id']}))
+        commits = list(self.coll.commits.find({"files.file_id": f['_id']}))
         
         assert commits
 
@@ -286,7 +284,7 @@ class Global:
     def _add_commits(self, files):
         files_ids = [f["_id"] for f in files]
 
-        commits = list(self.coll_commits.find({"files.file_id": {"$in": files_ids}}))
+        commits = list(self.coll.commits.find({"files.file_id": {"$in": files_ids}}))
         
         for f in files:
             if "_temp" not in f:
@@ -316,7 +314,7 @@ class Global:
             ]
         pipe += pipe1
 
-        c = self.coll_files.aggregate(pipe)
+        c = self.coll.files.aggregate(pipe)
 
         files0 = []
         files1 = []
