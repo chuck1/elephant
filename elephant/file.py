@@ -39,6 +39,7 @@ class Engine:
         return _AArray(self.coll, d)
 
     def put_new(self, doc):
+        doc = elephant.util.clean_document(doc)
         res = self.coll.insert_one(doc)
         return res
 
