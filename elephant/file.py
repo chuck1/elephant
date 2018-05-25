@@ -1,6 +1,9 @@
+import logging
 import aardvark
 import bson
 import elephant.util
+
+logger = logging.getLogger(__name__)
 
 class _AArray:
     """
@@ -55,6 +58,11 @@ class Engine:
         diffs = list(aardvark.diff(doc0, doc1))
         
         update = elephant.util.diffs_to_update(diffs, doc)
+
+        logger.info(str(update))
+        if not update:
+            logger.info("updates is empty")
+            return
 
         res = self.coll.update_one({'_id': doc_id}, update)
 

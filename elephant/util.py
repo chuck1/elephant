@@ -30,10 +30,12 @@ def diffs_keys_unset(diffs):
 def diffs_to_update(diffs, item):
 
     update_unset = dict((k, "") for k in diffs_keys_unset(diffs))
+    update_set = dict((k, item[k]) for k in diffs_keys_set(diffs))
 
-    update = {
-            '$set': dict((k, item[k]) for k in diffs_keys_set(diffs)),
-            }
+    update = {} 
+
+    if update_set:
+        update['$set'] = update_set
 
     if update_unset:
         update['$unset'] = update_unset
