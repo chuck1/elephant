@@ -246,6 +246,9 @@ class Global:
         
         update = elephant.util.diffs_to_update(diffs, item)
 
+        if '$set' not in update:
+            update['$set'] = {}
+
         update['$set']['_elephant.commit_id'] = commit["_id"]
         update['$set']['_temp'] = f.d["_temp"]
 
