@@ -31,7 +31,7 @@ class _AArray:
     def to_array(self):
         return self.d
 
-class Engine:
+class EngineDEP:
     """
     simple engine for querying a collection and returning _AArray objects
     """
@@ -65,6 +65,12 @@ class Engine:
             return
 
         res = self.coll.update_one({'_id': doc_id}, update)
+
+    def check(self):
+        print(f'check {self.coll}')
+        for d in self.coll.find():
+            d1 = self._factory(d)
+            d1.creator()
 
     def find(self, filt):
         for d in self.coll.find(filt):

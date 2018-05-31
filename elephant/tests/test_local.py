@@ -19,7 +19,7 @@ def test_1(client, database, a, b):
 
     user_id = db.users.insert_one({}).inserted_id
     
-    e = elephant.local_.Local(db)
+    e = elephant.local_.Engine(db)
     
     res = e.put("master", None, a, user_id)
 

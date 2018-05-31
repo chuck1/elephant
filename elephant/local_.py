@@ -4,13 +4,33 @@ import hashlib
 import datetime
 import pprint
 import bson.json_util
-
+import crayons
 import aardvark
 
 import elephant.util
 import elephant.file
 
-class Local:
+class File(elephant.file.File):
+    def __init__(self, e, d):
+        super(File, self).__init__(e, d)
+
+    def creator(self):
+        commits = self.commits()
+        commit0 = next(commits)
+
+        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
+        if 'user' not in commit0:
+            print(crayons.red('no user'))
+            pprint.pprint(commit0)
+            commit0['user'] = my_id
+            self.e.coll.commits.update_one({'_id': commit0['_id']}, {'$set': {'user': commit0['user']}})
+
+        return commit0['user']
+ 
+    def commits(self):
+        return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
+       
+class Engine:
     """
     This implements the per-item version concept
 
@@ -49,12 +69,21 @@ class Local:
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, coll, e_queries):
+    def __init__(self, coll, e_queries=None):
         self.coll = coll
         self.e_queries = e_queries
 
+    def check(self):
+        print(f'check {self.coll}')
+        i = 0
+        for d in self.coll.files.find():
+            d1 = self._factory(d)
+            d1.creator()
+            i += 1
+        print(f'checked {i} documents')
+
     def _factory(self, d):
-        return elephant.file.File(self, d)
+        return File(self, d)
 
     def _create_commit(self, file_id, parent, diffs, user_id):
         diffs_array = [d.to_array() for d in diffs]
@@ -76,7 +105,7 @@ class Local:
 
         commit_id = self._create_commit(None, None, diffs, user_id)
 
-        item1 = dict(item)
+        item1 = elephant.util.clean_document(item)
 
         item1['_elephant'] = {
                 "ref": ref,
@@ -90,12 +119,11 @@ class Local:
         return res
 
     def put(self, ref, _id, item, user_id):
-        # dont want to track _id or _elephant
-        for k in ['_id', '_elephant']:
-            if k in item: del item[k]
 
         if _id is None:
             return self._put_new(ref, item, user_id)
+
+        item1 = elephant.util.clean_document(item)
 
         item0 = self.coll.files.find_one({'_id': _id})
 

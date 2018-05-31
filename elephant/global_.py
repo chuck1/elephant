@@ -65,6 +65,22 @@ class File:
     def commits(self, ref):
         return reversed(list(self._commits(ref)))
 
+    def creator(self):
+        commits = self.commits1()
+        commit0 = next(commits)
+
+        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
+        if 'user' not in commit0:
+            print(crayons.red('no user'))
+            pprint.pprint(commit0)
+            #commit0['user'] = my_id
+            #self.e.coll.commits.update_one({'_id': commit0['_id']}, {'$set': {'user': commit0['user']}})
+
+        return commit0['user']
+ 
+    def commits1(self):
+        return self.e.coll.commits.find({"files.file_id": self.d["_id"]}).sort([('time', 1)])
+ 
 def breakpoint(): import pdb; pdb.set_trace();
 
   
@@ -143,6 +159,15 @@ class Global:
     def _factory(self, d):
         return File(self, d)
     
+    def check(self):
+        print(f'check {self.coll}')
+        i = 0
+        for d in self.coll.files.find():
+            d1 = self._factory(d)
+            d1.creator()
+            i += 1
+        print(f'checked {i} documents')
+
     def ref(self):
         ref = self.coll.refs.find_one({'name': self.ref_name})
 
