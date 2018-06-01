@@ -352,6 +352,17 @@ class Global:
 
             yield f1
 
+    def _find(self, query, pipe1=[]):
+        pipe = [
+            {'$match': query},
+            ]
+        pipe += pipe1
+
+        c = self.coll.files.aggregate(pipe)
+
+        for d in c:
+            yield self._factory(d)
+
     def find(self, user, query, pipe1=[]):
         n = 30
         
