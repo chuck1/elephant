@@ -65,6 +65,14 @@ class File:
     def commits(self, ref):
         return reversed(list(self._commits(ref)))
 
+    def has_read_permission(self, user):
+        if user is None: return False
+        return user.d["_id"] == self.creator()
+
+    def has_write_permission(self, user_id):
+        if user is None: return False
+        return user.d["_id"] == self.creator()
+
     def creator(self):
         commits = self.commits1()
 
@@ -255,8 +263,8 @@ class Global:
         f = self.get_content({"_id": file_id})
         item0 = dict(f.d)
 
-        #el0 = item0['_elephant']
-        #el1 = dict(el0)
+        if not f.has_write_permission(user_id):
+            raise elephant.util.AccessDenied()
 
         item1 = elephant.util.clean_document(item0)
 
@@ -316,7 +324,7 @@ class Global:
 
         return self._factory(f)
 
-    def _add_commits(self, files):
+    def _add_commits(self, user, files):
         files_ids = [f["_id"] for f in files]
 
         commits = list(self.coll.commits.find({"files.file_id": {"$in": files_ids}}))
@@ -339,9 +347,12 @@ class Global:
 
             f1 = self._factory(f)
             #f1.update_temp()
+
+            if not f1.has_read_permission(user): continue
+
             yield f1
 
-    def find(self, query, pipe1=[]):
+    def find(self, user, query, pipe1=[]):
         n = 30
         
         pipe = [
@@ -360,13 +371,13 @@ class Global:
             except StopIteration:
                 break
         
-        yield list(self._add_commits(files0))
+        yield list(self._add_commits(user, files0))
 
         for f in c:
             files1.append(f)
         
         if files1:
-            yield list(self._add_commits(files1))
+            yield list(self._add_commits(user, files1))
 
 
 

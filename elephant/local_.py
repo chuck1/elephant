@@ -14,6 +14,15 @@ class File(elephant.file.File):
     def __init__(self, e, d):
         super(File, self).__init__(e, d)
 
+    def has_read_permission(self, user):
+        return user.d["_id"] == self.creator()
+
+    def has_write_permission(self, user):
+        return user.d["_id"] == self.creator()
+
+    def commit0(self):
+        return next(self.commits())
+
     def creator(self):
         commits = self.commits()
 
@@ -32,6 +41,7 @@ class File(elephant.file.File):
                     "ref": ref,
                     "refs": {ref: commit_id},
                     }
+            res = self.coll.files.insert_one(item1)
             return
 
         if 'user' not in commit0:
@@ -46,6 +56,10 @@ class File(elephant.file.File):
     def commits(self):
         return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
        
+    def delete(self):
+        self.e.coll.files.delete_one({'_id': self.d["_id"]})
+
+
 class Engine:
     """
     This implements the per-item version concept
@@ -142,6 +156,11 @@ class Engine:
 
         item1 = elephant.util.clean_document(item)
 
+        d = self.get_content({'_id': _id})
+
+        if not d.has_write_permission(user_id):
+            raise otter.AccessDenied()
+
         item0 = self.coll.files.find_one({'_id': _id})
 
         el0 = item0['_elephant']
@@ -172,6 +191,18 @@ class Engine:
     def get_content(self, ref, filt):
         f = self.coll.files.find_one(filt)
         if f is None: return None
+
+        f0 = self._factory(f)
+
+        if '_elephant' not in f:
+            print(crayons.red('local doc has no _elephant field'))
+            ref = 'master'
+            f['_elephant'] = {
+                    "ref": ref,
+                    "refs": {ref: f0.commit0()['_id']},
+                    }
+            self.coll.files.update_one({'_id': f['_id']}, {'$set': {'_elephant': f['_elephant']}})
+
         assert f['_elephant']
         
         if ref == f['_elephant']['ref']:
@@ -189,8 +220,14 @@ class Engine:
 
         return self._factory(f)
 
-    def find(self, filt):
-        return [self._factory(d) for d in self.coll.files.find(filt)]
+    def find(self, user, filt):
+        for d in self.coll.files.find(filt):
+            d1 = self._factory(d)
+ 
+            if not d1.has_read_permission(user):
+                continue
+ 
+            yield d1
 
 
 

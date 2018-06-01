@@ -1,6 +1,9 @@
 
 import aardvark
 
+class AccessDenied(Exception):
+    pass
+
 def clean_document(d0):
     d1 = dict(d0)
 
