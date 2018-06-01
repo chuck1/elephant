@@ -53,8 +53,8 @@ class File(elephant.file.File):
 
         return commit0['user']
  
-    def commits(self):
-        return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
+    #def commits(self):
+    #    return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
        
     def delete(self):
         self.e.coll.files.delete_one({'_id': self.d["_id"]})
@@ -116,7 +116,7 @@ class Engine:
     def _factory(self, d):
         return File(self, d)
 
-    def _create_commit(self, file_id, parent, diffs, user_id):
+    def _create_commit(self, file_id, parent, diffs, user):
         diffs_array = [d.to_array() for d in diffs]
         
         commit = {
@@ -124,17 +124,17 @@ class Engine:
                 'parent': parent,
                 'changes': diffs_array,
                 'time': datetime.datetime.utcnow(),
-                'user': user_id,
+                'user': user.d["_id"],
                 }
  
         res = self.coll.commits.insert_one(commit)
 
         return res.inserted_id
 
-    def _put_new(self, ref, item, user_id):
+    def _put_new(self, ref, item, user):
         diffs = list(aardvark.diff({}, item))
 
-        commit_id = self._create_commit(None, None, diffs, user_id)
+        commit_id = self._create_commit(None, None, diffs, user)
 
         item1 = elephant.util.clean_document(item)
 
@@ -149,16 +149,16 @@ class Engine:
 
         return res
 
-    def put(self, ref, _id, item, user_id):
+    def put(self, ref, _id, item, user):
 
         if _id is None:
-            return self._put_new(ref, item, user_id)
+            return self._put_new(ref, item, user)
 
         item1 = elephant.util.clean_document(item)
 
-        d = self.get_content({'_id': _id})
+        d = self.get_content(user, {'_id': _id})
 
-        if not d.has_write_permission(user_id):
+        if not d.has_write_permission(user):
             raise otter.AccessDenied()
 
         item0 = self.coll.files.find_one({'_id': _id})
@@ -176,12 +176,15 @@ class Engine:
         
         parent = el0['refs'][ref]
  
-        commit_id = self._create_commit(_id, parent, diffs, user_id)
+        commit_id = self._create_commit(_id, parent, diffs, user)
         
         el1['refs'][ref] = commit_id
 
         update = elephant.util.diffs_to_update(diffs, item)
         
+        if '$set' not in update:
+            update['$set'] = {}
+
         update['$set']['_elephant'] = el1
 
         res = self.coll.files.update_one({'_id': _id}, update)

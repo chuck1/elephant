@@ -69,7 +69,7 @@ class File:
         if user is None: return False
         return user.d["_id"] == self.creator()
 
-    def has_write_permission(self, user_id):
+    def has_write_permission(self, user):
         if user is None: return False
         return user.d["_id"] == self.creator()
 
@@ -204,17 +204,17 @@ class Global:
                 'changes': diffs_array,
                 }
 
-    def _create_commit(self, files_changes, user_id):
+    def _create_commit(self, files_changes, user):
 
         ref = self.ref()
         
-        assert user_id is not None
+        assert user is not None
 
         commit = {
                 'time': datetime.datetime.utcnow(),
                 'parent': ref['commit_id'],
                 'files': files_changes,
-                'user': user_id,
+                'user': user.d["_id"],
                 }
         
         res = self.coll.commits.insert_one(commit)
@@ -225,7 +225,7 @@ class Global:
 
         return commit
 
-    def put_new(self, item, user_id):
+    def put_new(self, item, user):
         item = elephant.util.clean_document(item)
 
         # need file id to create commit
@@ -235,7 +235,7 @@ class Global:
 
         diffs = list(aardvark.diff({}, item))
         
-        commit = self._create_commit([self.file_changes(file_id, diffs)], user_id)
+        commit = self._create_commit([self.file_changes(file_id, diffs)], user)
 
         # save ancestors
         item1 = dict(item)

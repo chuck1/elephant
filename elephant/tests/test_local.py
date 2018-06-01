@@ -7,6 +7,10 @@ import elephant.local_
 
 def breakpoint(): import pdb; pdb.set_trace();
 
+class User:
+    def __init__(self):
+        self.d = {}
+
 @pytest.mark.parametrize('a,b', [
     ({'a': 1}, {'a': 2}),
     ({'a': 1}, {'a': 1, 'b': 2}),
@@ -17,15 +21,16 @@ def test_1(client, database, a, b):
 
     db = database
 
-    user_id = db.users.insert_one({}).inserted_id
+    user = User()
+    user.d["_id"] = db.users.insert_one({}).inserted_id
     
     e = elephant.local_.Engine(db)
     
-    res = e.put("master", None, a, user_id)
+    res = e.put("master", None, a, user)
 
     _id = res.inserted_id
 
-    res = e.put("master", _id, b, user_id)
+    res = e.put("master", _id, b, user)
     
     print(res)
 

@@ -107,6 +107,6 @@ class File:
             c0 = _find(c0["parent"])
 
     def commits(self, ref = None):
-        return reversed(list(self._commits()))
+        return reversed(list(self._commits(ref)))
 
 
