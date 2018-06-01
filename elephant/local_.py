@@ -6,9 +6,16 @@ import pprint
 import bson.json_util
 import crayons
 import aardvark
+import logging
 
 import elephant.util
 import elephant.file
+
+logger = logging.getLogger(__name__)
+
+class _User:
+    def __init__(self):
+        self.d = {}
 
 class File(elephant.file.File):
     def __init__(self, e, d):
@@ -24,41 +31,85 @@ class File(elephant.file.File):
         return next(self.commits())
 
     def creator(self):
+
+        if '_elephant' not in self.d:
+            print(crayons.red('no field _elephant'))
+            commit0 = next(self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)]))
+            ref = 'master'
+            self.d['_elephant'] = {
+                    "ref": ref,
+                    "refs": {ref: commit0['_id']},
+                    }
+            res = self.e.coll.files.update_one({'_id': self.d['_id']}, {'$set': {'_elephant': self.d['_elephant']}})
+
         commits = self.commits()
 
         my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
+        my_user = _User()
+        my_user.d['_id'] = my_id
 
         try:
             commit0 = next(commits)
         except StopIteration:
             print(crayons.red('no commits'))
+
+            try:
+                commit1 = next(self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)]))
+                print('actually there are commits')
+                raise Exception()
+            except StopIteration:
+                pass
+            
+
             print(self.e)
             item = elephant.util.clean_document(self.d)
             diffs = list(aardvark.diff({}, item))
-            commit_id = self.e._create_commit(self.d['_id'], None, diffs, my_id)
+            commit_id = self.e._create_commit(self.d['_id'], None, diffs, my_user)
             ref = 'master'
             item['_elephant'] = {
                     "ref": ref,
                     "refs": {ref: commit_id},
                     }
-            res = self.coll.files.insert_one(item1)
+            res = self.coll.files.update_one({'_id': self.d['_id']}, {'$set': {'_elephant': item['_elephant']}})
             return
 
         if 'user' not in commit0:
-            print(crayons.red('no user'))
-            pprint.pprint(commit0)
-            commit0['user'] = my_id
-            self.e.coll.commits.update_one({'_id': commit0['_id']}, 
-                    {'$set': {'user': commit0['user']}})
+            commit0 = self.e.coll.commits.find_one({'_id': commit0['_id']})
+            print(crayons.yellow('local: no user in commit'))
+            if 'user' not in commit0:
+                print(crayons.red('local: no user'))
+                pprint.pprint(commit0)
+                commit0['user'] = my_id
+                res = self.e.coll.commits.update_one({'_id': commit0['_id']}, 
+                        {'$set': {'user': commit0['user']}})
+                print(res.modified_count)
+                res = self.e.coll.commits.find_one({'_id': commit0['_id']})
+                pprint.pprint(res)
+                assert 'user' in res
+            else:
+                self.update_temp()
+                self.put('master', None)
 
         return commit0['user']
  
+    def put(self, ref, user):
+        return self.e.put(ref, self.d["_id"], self.d, user)
+
     #def commits(self):
     #    return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
        
     def delete(self):
         self.e.coll.files.delete_one({'_id': self.d["_id"]})
 
+    def update_temp(self):
+        """
+        update self.d["_temp"] with calculated values to be stored in the database for querying
+        """
+        commits = list(self.e.coll.commits.find({"file": self.d["_id"]}))
+        
+        self.d["_temp"] = {}
+
+        self.d["_temp"]["commits"] = commits
 
 class Engine:
     """
@@ -149,38 +200,48 @@ class Engine:
 
         return res
 
-    def put(self, ref, _id, item, user):
+    def put(self, ref, _id, doc_new_0, user):
 
         if _id is None:
-            return self._put_new(ref, item, user)
+            return self._put_new(ref, doc_new_0, user)
 
-        item1 = elephant.util.clean_document(item)
+        doc_old_0 = self.coll.files.find_one({'_id': _id})
 
+        doc_old_1 = elephant.util.clean_document(doc_old_0)
+        doc_new_1 = elephant.util.clean_document(doc_new_0)
+
+        el0 = doc_old_0['_elephant']
+        el1 = dict(el0)
+
+        assert ref == el0['ref']
+
+        diffs = list(aardvark.diff(doc_old_1, doc_new_1))
+
+
+        if not diffs:
+            d = self._factory(doc_new_0)
+            d.update_temp()
+
+            if doc_old_0.get("_temp", {}) != d.d["_temp"]:
+                logger.info('update temp')
+                update = {'$set': {}}
+                update['$set']['_temp'] = d.d["_temp"]
+                res = self.coll.files.update_one({'_id': _id}, update)
+            
+            return
+
+        parent = el0['refs'][ref]
+ 
         d = self.get_content(user, {'_id': _id})
 
         if not d.has_write_permission(user):
             raise otter.AccessDenied()
 
-        item0 = self.coll.files.find_one({'_id': _id})
-
-        el0 = item0['_elephant']
-        el1 = dict(el0)
-
-        assert ref == item0['_elephant']['ref']
-
-        item1 = dict(item0)
-        del item1['_id']
-        del item1['_elephant']
-
-        diffs = list(aardvark.diff(item1, item))
-        
-        parent = el0['refs'][ref]
- 
         commit_id = self._create_commit(_id, parent, diffs, user)
         
         el1['refs'][ref] = commit_id
 
-        update = elephant.util.diffs_to_update(diffs, item)
+        update = elephant.util.diffs_to_update(diffs, doc_new_1)
         
         if '$set' not in update:
             update['$set'] = {}

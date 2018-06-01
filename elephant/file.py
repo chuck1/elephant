@@ -88,9 +88,12 @@ class File:
 
     def _commits(self, ref = None):
         def _find(commit_id):
-            for c in self.d["_temp"]["commits"]:
-                if c["_id"] == commit_id:
-                    return c
+            if '_temp' in self.d:
+                for c in self.d["_temp"]["commits"]:
+                    if c["_id"] == commit_id:
+                        return c
+            
+            return self.e.coll.commits.find_one({'_id': commit_id})
 
         ref = ref or self.d["_elephant"]["ref"]
 
