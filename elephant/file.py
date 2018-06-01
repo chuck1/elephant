@@ -112,4 +112,7 @@ class File:
     def commits(self, ref = None):
         return reversed(list(self._commits(ref)))
 
+    async def to_array(self):
+        return dict(self.d)
+
 
