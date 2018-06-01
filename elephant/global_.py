@@ -67,14 +67,20 @@ class File:
 
     def creator(self):
         commits = self.commits1()
-        commit0 = next(commits)
+
+        try:
+            commit0 = next(commits)
+        except StopIteration:
+            print(crayons.red('no commits'))
+            return
 
         my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
         if 'user' not in commit0:
             print(crayons.red('no user'))
             pprint.pprint(commit0)
             #commit0['user'] = my_id
-            #self.e.coll.commits.update_one({'_id': commit0['_id']}, {'$set': {'user': commit0['user']}})
+            #self.e.coll.commits.update_one({'_id': commit0['_id']}, 
+            #{'$set': {'user': commit0['user']}})
 
         return commit0['user']
  
@@ -160,13 +166,14 @@ class Global:
         return File(self, d)
     
     def check(self):
-        print(f'check {self.coll}')
         i = 0
         for d in self.coll.files.find():
             d1 = self._factory(d)
             d1.creator()
             i += 1
-        print(f'checked {i} documents')
+        if i == 0:
+           print(f'check {self.coll}')
+           print(f'checked {i} documents')
 
     def ref(self):
         ref = self.coll.refs.find_one({'name': self.ref_name})
