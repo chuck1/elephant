@@ -21,6 +21,12 @@ class File(elephant.file.File):
     def __init__(self, e, d):
         super(File, self).__init__(e, d)
 
+    def valid(self):
+        pass
+
+    def check(self):
+        self.creator()
+
     def has_read_permission(self, user):
         return user.d["_id"] == self.creator()
 
@@ -155,14 +161,24 @@ class Engine:
         self.e_queries = e_queries
 
     def check(self):
+        logger.info('check documents')
         i = 0
         for d in self.coll.files.find():
             d1 = self._factory(d)
-            d1.creator()
+            d1.check()
             i += 1
         if i == 0:
             print(f'check {self.coll}')
             print(f'checked {i} documents')
+
+        logger.info('check commits')
+        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
+        for c in self.coll.commits.find():
+            #if 'user' not in c:
+            #    pprint.pprint(c)
+            #    logger.error('commit does not have field user')
+            #    self.coll.commits.update_one({"_id": c["_id"]}, {"$set": {'user': my_id}})
+            assert 'user' in c
 
     def _factory(self, d):
         return File(self, d)

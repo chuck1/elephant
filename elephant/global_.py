@@ -4,9 +4,12 @@ import json
 import time
 import hashlib
 import bson
+import logging
 
 import aardvark
 import elephant.util
+
+logger = logging.getLogger(__name__)
 
 class File:
     def __init__(self, e, d):
@@ -26,6 +29,12 @@ class File:
         updates = {'$set': {k: v}}
         self.e.coll.files.update_one({'_id': self.d['_id']}, updates)
 
+    def valid(self):
+        pass
+
+    def check(self):
+        self.creator()
+
     def update_temp(self):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
@@ -38,8 +47,8 @@ class File:
     def update(self, updates):
         self.e.coll.files.update_one({"_id": self.d['_id']}, updates)
 
-    def put(self, user_id):
-        return self.e.put(self.d["_id"], self.d, user_id)
+    def put(self, user):
+        return self.e.put(self.d["_id"], self.d, user)
 
     def _commits(self, ref):
         def _find(commit_id):
@@ -174,14 +183,24 @@ class Global:
         return File(self, d)
     
     def check(self):
+        logger.info('check documents')
         i = 0
         for d in self.coll.files.find():
             d1 = self._factory(d)
-            d1.creator()
+            d1.check()
             i += 1
         if i == 0:
            print(f'check {self.coll}')
            print(f'checked {i} documents')
+
+        logger.info('check commits')
+        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
+        for c in self.coll.commits.find():
+            #if 'user' not in c:
+            #    pprint.pprint(c)
+            #    logger.error('commit does not have field user')
+            #    self.coll.commits.update_one({"_id": c["_id"]}, {"$set": {'user': my_id}})
+            assert 'user' in c
 
     def ref(self):
         ref = self.coll.refs.find_one({'name': self.ref_name})
@@ -253,18 +272,16 @@ class Global:
 
         return res
 
-    def put(self, file_id, item, user_id):
+    def put(self, file_id, item, user):
 
         if file_id is None:
-            return self.put_new(item, user_id)
+            return self.put_new(item, user)
 
         item = elephant.util.clean_document(item)
 
         f = self.get_content({"_id": file_id})
         item0 = dict(f.d)
 
-        if not f.has_write_permission(user_id):
-            raise elephant.util.AccessDenied()
 
         item1 = elephant.util.clean_document(item0)
 
@@ -282,7 +299,10 @@ class Global:
             
             return
 
-        commit = self._create_commit([self.file_changes(file_id, diffs)], user_id)
+        if not f.has_write_permission(user):
+            raise elephant.util.AccessDenied()
+
+        commit = self._create_commit([self.file_changes(file_id, diffs)], user)
         
         update = elephant.util.diffs_to_update(diffs, item)
 
