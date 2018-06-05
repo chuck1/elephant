@@ -7,6 +7,7 @@ import bson
 import logging
 
 import aardvark
+import aardvark.util
 import elephant.util
 
 logger = logging.getLogger(__name__)
@@ -201,6 +202,8 @@ class Global:
             #    logger.error('commit does not have field user')
             #    self.coll.commits.update_one({"_id": c["_id"]}, {"$set": {'user': my_id}})
             assert 'user' in c
+            assert 'time' in c
+            assert isinstance(c['time'], datetime.datetime)
 
     def ref(self):
         ref = self.coll.refs.find_one({'name': self.ref_name})
