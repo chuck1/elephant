@@ -245,7 +245,7 @@ class Global:
         return commit
 
     def put_new(self, item, user):
-        item = elephant.util.clean_document(item)
+        item = aardvark.util.clean(item)
 
         # need file id to create commit
         res = self.coll.files.insert_one(item)
@@ -277,13 +277,13 @@ class Global:
         if file_id is None:
             return self.put_new(item, user)
 
-        item = elephant.util.clean_document(item)
+        item = aardvark.util.clean(item)
 
         f = self.get_content({"_id": file_id})
         item0 = dict(f.d)
 
 
-        item1 = elephant.util.clean_document(item0)
+        item1 = aardvark.util.clean(item0)
 
         diffs = list(aardvark.diff(item1, item))
 
@@ -304,7 +304,7 @@ class Global:
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
         
-        update = elephant.util.diffs_to_update(diffs, item)
+        update = aardvark.util.diffs_to_update(diffs, item)
 
         if '$set' not in update:
             update['$set'] = {}

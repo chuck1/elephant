@@ -42,7 +42,7 @@ class EngineDEP:
         return _AArray(self.coll, d)
 
     def put_new(self, doc):
-        doc = elephant.util.clean_document(doc)
+        doc = aardvark.util.clean(doc)
         res = self.coll.insert_one(doc)
         return res
 
@@ -51,13 +51,13 @@ class EngineDEP:
             return self.put_new(doc)
 
         doc0 = self.coll.find_one({'_id': doc_id})
-        doc0 = elephant.util.clean_document(doc0)
+        doc0 = aardvark.util.clean(doc0)
 
-        doc1 = elephant.util.clean_document(doc)
+        doc1 = aardvark.util.clean(doc)
 
         diffs = list(aardvark.diff(doc0, doc1))
         
-        update = elephant.util.diffs_to_update(diffs, doc)
+        update = aardvark.util.diffs_to_update(diffs, doc)
 
         logger.info(str(update))
         if not update:

@@ -18,7 +18,7 @@ def _test(database, a, b):
 
     res = coll.insert_one(a)
     
-    u = elephant.util.diffs_to_update(diffs, b)
+    u = aardvark.util.diffs_to_update(diffs, b)
 
     print(u)
     

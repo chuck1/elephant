@@ -68,7 +68,7 @@ class File(elephant.file.File):
             
 
             print(self.e)
-            item = elephant.util.clean_document(self.d)
+            item = aardvark.util.clean(self.d)
             diffs = list(aardvark.diff({}, item))
             commit_id = self.e._create_commit(self.d['_id'], None, diffs, my_user)
             ref = 'master'
@@ -203,7 +203,7 @@ class Engine:
 
         commit_id = self._create_commit(None, None, diffs, user)
 
-        item1 = elephant.util.clean_document(item)
+        item1 = aardvark.util.clean(item)
 
         item1['_elephant'] = {
                 "ref": ref,
@@ -223,8 +223,8 @@ class Engine:
 
         doc_old_0 = self.coll.files.find_one({'_id': _id})
 
-        doc_old_1 = elephant.util.clean_document(doc_old_0)
-        doc_new_1 = elephant.util.clean_document(doc_new_0)
+        doc_old_1 = aardvark.util.clean(doc_old_0)
+        doc_new_1 = aardvark.util.clean(doc_new_0)
 
         el0 = doc_old_0['_elephant']
         el1 = dict(el0)
@@ -257,7 +257,7 @@ class Engine:
         
         el1['refs'][ref] = commit_id
 
-        update = elephant.util.diffs_to_update(diffs, doc_new_1)
+        update = aardvark.util.diffs_to_update(diffs, doc_new_1)
         
         if '$set' not in update:
             update['$set'] = {}
