@@ -160,6 +160,7 @@ class Engine:
         self.coll = coll
         self.e_queries = e_queries
 
+
     def check(self):
         logger.info('check documents')
         i = 0
