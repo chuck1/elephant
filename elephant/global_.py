@@ -171,15 +171,17 @@ class Global:
         self.ref_name = ref_name
         self._cache = {}
 
-    def pipe1(self, sort=None):
+    def pipe1(self):
         # for mongo aggregate
+
+        yield {'$addFields': {'_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]}}}
+
+    def pipe2(self, sort=None):
+        # for mongo aggregate
+
         if sort is not None:
-            return [
-                    {'$sort': bson.son.SON(sort)}
-                    ]
-        else:
-            return []
- 
+            yield {'$sort': bson.son.SON(sort)}
+
     def _factory(self, d):
         return File(self, d)
     
@@ -287,7 +289,7 @@ class Global:
 
         item = aardvark.util.clean(item)
 
-        f = self.get_content({"_id": file_id})
+        f = self._get_content({"_id": file_id})
         item0 = dict(f.d)
 
         item1 = aardvark.util.clean(item0)
@@ -398,24 +400,26 @@ class Global:
 
             yield f1
 
-    def _find(self, query, pipe1=[]):
+    def _find(self, query, pipe1=[], pipe2=[]):
+
         pipe = [
             {'$match': query},
             ]
-        pipe += pipe1
+        pipe = pipe1 + pipe + pipe2
 
         c = self.coll.files.aggregate(pipe)
 
         for d in c:
             yield self._factory(d)
 
-    def find(self, user, query, pipe1=[]):
+    def find(self, user, query, pipe1=[], pipe2=[]):
         n = 30
         
-        pipe = [
-            {'$match': query},
-            ]
-        pipe += pipe1
+        logger.info(f'pipe1 = {pipe1}')
+        logger.info(f'pipe2 = {pipe2}')
+
+        pipe = [{'$match': query}]
+        pipe = pipe1 + pipe + pipe2
 
         c = self.coll.files.aggregate(pipe)
 
