@@ -163,6 +163,11 @@ class Engine:
 
     def check(self):
         logger.info('check documents')
+
+        # delete test docs
+        res = self.coll.files.delete_many({'test_field': {'$exists': True}})
+        logger.info(f'deleted {res.deleted_count} test documents')
+
         i = 0
         for d in self.coll.files.find():
             d1 = self._factory(d)
@@ -271,7 +276,7 @@ class Engine:
 
         return res
 
-    def get_content(self, ref, filt):
+    def get_content(self, ref, user, filt):
         f = self.coll.files.find_one(filt)
         if f is None: return None
 

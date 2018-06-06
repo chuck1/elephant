@@ -185,6 +185,11 @@ class Global:
     
     def check(self):
         logger.info('check documents')
+
+        # delete test docs
+        res = self.coll.files.delete_many({'test_field': {'$exists': True}})
+        logger.info(f'deleted {res.deleted_count} test documents')
+
         i = 0
         for d in self.coll.files.find():
             d1 = self._factory(d)
@@ -285,7 +290,6 @@ class Global:
         f = self.get_content({"_id": file_id})
         item0 = dict(f.d)
 
-
         item1 = aardvark.util.clean(item0)
 
         diffs = list(aardvark.diff(item1, item))
@@ -331,7 +335,7 @@ class Global:
 
         return f
 
-    def get_content(self, filt):
+    def get_content(self, user, filt):
         f = self.coll.files.find_one(filt)
         
         if f is None: return
