@@ -335,6 +335,25 @@ class Global:
 
         return f
 
+    def _get_content(self, filt):
+        """
+        do not check permissions
+        """
+        f = self.coll.files.find_one(filt)
+        
+        if f is None: return
+
+        commits = list(self.coll.commits.find({"files.file_id": f['_id']}))
+        
+        assert commits
+
+        if "_temp" not in f:
+            f["_temp"] = {}
+
+        f["_temp"]["commits"] = commits
+
+        return self._factory(f)
+
     def get_content(self, user, filt):
         f = self.coll.files.find_one(filt)
         
