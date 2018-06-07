@@ -36,17 +36,46 @@ class File(elephant.file.File):
     def commit0(self):
         return next(self.commits())
 
+    def _commit0(self):
+        try:
+            commit0 = next(self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)]))
+        except StopIteration:
+ 
+            print(crayons.red('no commits'))
+            item = elephant.util.clean_document(self.d)
+            diffs = list(aardvark.diff({}, item))
+            commit_id = self.e._create_commit_1(self.d['_id'], None, diffs)
+            ref = 'master'
+            e = {
+                    "ref": ref,
+                    "refs": {ref: commit_id},
+                    }
+            res = self.e.coll.files.update_one({'_id': self.d['_id']}, {'$set': {'_elephant': e}})
+            self.d['_elephant'] = e
+        
+            commit0 = self.e.coll.commits.find_one({'_id': commit_id})
+
+        return commit0
+
     def creator(self):
 
         if '_elephant' not in self.d:
             print(crayons.red('no field _elephant'))
-            commit0 = next(self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)]))
-            ref = 'master'
-            self.d['_elephant'] = {
-                    "ref": ref,
-                    "refs": {ref: commit0['_id']},
-                    }
-            res = self.e.coll.files.update_one({'_id': self.d['_id']}, {'$set': {'_elephant': self.d['_elephant']}})
+
+            commit0 = self._commit0()
+
+            if '_elephant' not in self.d:
+
+                ref = 'master'
+                self.d['_elephant'] = {
+                        "ref": ref,
+                        "refs": {ref: commit0['_id']},
+                        }
+    
+                res = self.e.coll.files.update_one(
+                        {'_id': self.d['_id']}, {'$set': {'_elephant': self.d['_elephant']}})
+    
+                print(res.modified_count)
 
         commits = self.commits()
 
@@ -65,7 +94,6 @@ class File(elephant.file.File):
                 raise Exception()
             except StopIteration:
                 pass
-            
 
             print(self.e)
             item = aardvark.util.clean(self.d)
@@ -76,7 +104,8 @@ class File(elephant.file.File):
                     "ref": ref,
                     "refs": {ref: commit_id},
                     }
-            res = self.coll.files.update_one({'_id': self.d['_id']}, {'$set': {'_elephant': item['_elephant']}})
+            res = self.coll.files.update_one(
+                    {'_id': self.d['_id']}, {'$set': {'_elephant': item['_elephant']}})
             return
 
         if 'user' not in commit0:
@@ -200,6 +229,20 @@ class Engine:
 
     def _factory(self, d):
         return File(self, d)
+
+    def _create_commit_1(self, file_id, parent, diffs):
+        diffs_array = [d.to_array() for d in diffs]
+        
+        commit = {
+                'file': file_id,
+                'parent': parent,
+                'changes': diffs_array,
+                'time': datetime.datetime.utcnow(),
+                }
+ 
+        res = self.coll.commits.insert_one(commit)
+
+        return res.inserted_id
 
     def _create_commit(self, file_id, parent, diffs, user):
         diffs_array = [d.to_array() for d in diffs]
