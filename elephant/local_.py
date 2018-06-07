@@ -126,10 +126,16 @@ class Engine:
         {
             # these key-value pairs make up the traditional content of a mongo item.
             # they are stored at the root of the item.
-            # to elephant, this information is temporary, it can be automatically created based on version history
+            # to elephant, this information is temporary, it can be automatically 
+            # created based on version history
             # it is used for convenient access of a particular state of the item
 
-            "_id": "123",
+            "_id": <bson.objectid.ObjectId>,
+
+            # this section is basically a 'working directory'
+            # it reflects the state of the document at the commit refered to by the
+            # '_elephant.ref' field below
+
             "key1": "value1",
             "key2": "value2",
             
@@ -140,17 +146,21 @@ class Engine:
                 "refs": {
                     "master": "<commit id>"
                 },
-                "commits": {
-                    "<commit id>": {
-                        "id": "<commit id>",
-                        "changes": [
-                            # list of aardvark json-ized diffs
-                        ]
-                    }
                 ]
             }
         }
     
+    Commits shall be
+
+        {
+            "_id": <commit id>,
+            "file_id": 
+            "user": 
+            "time": 
+            "changes": [
+                # list of aardvark json-ized diffs
+            ]
+        }
 
     Note that commit ids are not mongo ids because commits are not items.
     Commit its will be managed by elephant.
@@ -241,7 +251,6 @@ class Engine:
 
         diffs = list(aardvark.diff(doc_old_1, doc_new_1))
 
-
         if not diffs:
             d = self._factory(doc_new_0)
             d.update_temp()
@@ -256,7 +265,7 @@ class Engine:
 
         parent = el0['refs'][ref]
  
-        d = self.get_content(user, {'_id': _id})
+        d = self.get_content('master', user, {'_id': _id})
 
         if not d.has_write_permission(user):
             raise otter.AccessDenied()

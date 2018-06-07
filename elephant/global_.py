@@ -179,7 +179,7 @@ class Global:
     def pipe2(self, sort=None):
         # for mongo aggregate
 
-        if sort is not None:
+        if sort:
             yield {'$sort': bson.son.SON(sort)}
 
     def _factory(self, d):
