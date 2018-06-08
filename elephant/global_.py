@@ -327,11 +327,11 @@ class Global:
 
         return res
 
-    def get_file_by_id(self, _id):
+    def get_file_by_id(self, user, _id):
         #if _id in self._cache:
         #    return self._cache[_id]
         
-        f = self.get_content({"_id": _id})
+        f = self.get_content(user, {"_id": _id})
 
         self._cache[_id] = f
 
