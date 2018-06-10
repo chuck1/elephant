@@ -328,6 +328,12 @@ class Engine:
 
         return res
 
+    def _find_one(self, ref, q):
+        return self.get_content(ref, None, q)
+
+    def find_one(self, user, ref, q):
+        return self.get_content(ref, user, q)
+
     def get_content(self, ref, user, filt):
         f = self.coll.files.find_one(filt)
         if f is None: return None
