@@ -466,7 +466,17 @@ class Global:
             if d1.has_read_permission(user):
                 yield d1
 
+    def aggregate(self, user, pipeline_generator):
 
+        pipe = list(pipeline_generator())
+
+        c = self.coll.files.aggregate(pipe)
+        
+        for d in c:
+            d1 = self._factory(d)
+            if d1.has_read_permission(user):
+                yield d1
+      
 
 
 
