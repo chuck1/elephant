@@ -1,2 +1,2 @@
 #!/bin/bash
-virtualenv --python=python3.6 env
+python3.7 -m venv env

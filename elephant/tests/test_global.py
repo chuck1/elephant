@@ -38,7 +38,7 @@ def test_1(client, database, a, b):
 
     res = e.put(_id, b, user)
     
-    item = e.get_content({'_id': _id})
+    item = e.get_content(user, {'_id': _id})
     
     print(item)
 

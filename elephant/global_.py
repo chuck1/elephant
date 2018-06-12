@@ -178,6 +178,17 @@ class Global:
 
         yield {'$addFields': {'_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]}}}
 
+        # commits
+        yield {'$lookup': {
+                'from': self.coll.name + '.commits',
+                'let': {'file_id': '$_id'},
+                'pipeline': [
+                    {'$unwind': '$files'},
+                    {'$match': {'$expr': {'$eq': ["$files.file_id","$$file_id"]}}},
+                    ],
+                'as': "_temp._commits",
+                }}
+
     def pipe2(self, sort=None):
         # for mongo aggregate
 
@@ -337,7 +348,7 @@ class Global:
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
         
-        update = aardvark.util.diffs_to_update(diffs, item)
+        update = aardvark.util.diffs_to_update(diffs, doc_new_0)
 
         if '$set' not in update:
             update['$set'] = {}
@@ -437,32 +448,28 @@ class Global:
             yield self._factory(d)
 
     def find(self, user, query, pipe1=[], pipe2=[]):
-        n = 30
-        
+
         logger.info(f'pipe1 = {pipe1}')
         logger.info(f'pipe2 = {pipe2}')
 
-        pipe = [{'$match': query}]
+        pipe = [
+            {'$match': query},
+            ]
         pipe = pipe1 + pipe + pipe2
 
         c = self.coll.files.aggregate(pipe)
 
-        files0 = []
-        files1 = []
+        for d in c:
+            d1 = self._factory(d)
+            if d1.has_read_permission(user):
+                yield d1
 
-        for i in range(n):
-            try:
-                files0.append(next(c))
-            except StopIteration:
-                break
-        
-        yield list(self._add_commits(user, files0))
 
-        for f in c:
-            files1.append(f)
-        
-        if files1:
-            yield list(self._add_commits(user, files1))
+
+
+
+
+
 
 
 
