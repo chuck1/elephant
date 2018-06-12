@@ -186,7 +186,7 @@ class Global:
                     {'$unwind': '$files'},
                     {'$match': {'$expr': {'$eq': ["$files.file_id","$$file_id"]}}},
                     ],
-                'as': "_temp._commits",
+                'as': "_temp.commits",
                 }}
 
     def pipe2(self, sort=None):
