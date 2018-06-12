@@ -183,8 +183,10 @@ class Global:
                 'from': self.coll.name + '.commits',
                 'let': {'file_id': '$_id'},
                 'pipeline': [
-                    {'$unwind': '$files'},
-                    {'$match': {'$expr': {'$eq': ["$files.file_id","$$file_id"]}}},
+                    {'$addFields': {'files1': '$files'}},
+                    {'$unwind': '$files1'},
+                    {'$match': {'$expr': {'$eq': ["$files1.file_id","$$file_id"]}}},
+                    {'$project': {'files1': 0}},
                     ],
                 'as': "_temp.commits",
                 }}
