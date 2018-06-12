@@ -1,4 +1,6 @@
+import copy
 import itertools
+import pprint
 import datetime
 import json
 import time
@@ -254,20 +256,33 @@ class Global:
 
         return commit
 
-    def put_new(self, item, user):
-        item = aardvark.util.clean(item)
+    def put_new(self, doc_new_0, user):
+        print('put new')
+        print('doc_new_0')
+        pprint.pprint(doc_new_0)
+
+        doc_new_1 = aardvark.util.clean(doc_new_0)
+
+        print('doc_new_1')
+        pprint.pprint(doc_new_1)
 
         # need file id to create commit
-        res = self.coll.files.insert_one(item)
+        res = self.coll.files.insert_one(copy.copy(doc_new_1))
+
+        print('doc_new_1 after insert')
+        pprint.pprint(doc_new_1)
 
         file_id = res.inserted_id
 
-        diffs = list(aardvark.diff({}, item))
+        diffs = list(aardvark.diff({}, doc_new_1))
+
+        print('diffs')
+        pprint.pprint(diffs)
         
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
 
         # save ancestors
-        item1 = dict(item)
+        item1 = dict(doc_new_1)
         item1["_id"] = file_id
         item1["_temp"] = {}
 
@@ -282,19 +297,28 @@ class Global:
 
         return res
 
-    def put(self, file_id, item, user):
+    def put(self, file_id, doc_new_0, user):
 
         if file_id is None:
-            return self.put_new(item, user)
+            return self.put_new(doc_new_0, user)
 
-        item = aardvark.util.clean(item)
+        print('doc_new_0')
+        pprint.pprint(doc_new_0)
+
+        doc_new_1 = aardvark.util.clean(doc_new_0)
+
+        print('doc_new_1')
+        pprint.pprint(doc_new_1)
 
         f = self._get_content({"_id": file_id})
         item0 = dict(f.d)
 
         item1 = aardvark.util.clean(item0)
 
-        diffs = list(aardvark.diff(item1, item))
+        diffs = list(aardvark.diff(item1, doc_new_1))
+
+        print('diffs')
+        pprint.pprint(diffs)
 
         aardvark.apply(f.d, diffs)
 
