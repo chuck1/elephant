@@ -315,13 +315,13 @@ class Global:
         if file_id is None:
             return self.put_new(doc_new_0, user)
 
-        print('doc_new_0')
-        pprint.pprint(doc_new_0)
+        #print('doc_new_0')
+        #pprint.pprint(doc_new_0)
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
-        print('doc_new_1')
-        pprint.pprint(doc_new_1)
+        #print('doc_new_1')
+        #pprint.pprint(doc_new_1)
 
         f = self._get_content({"_id": file_id})
         item0 = dict(f.d)
@@ -330,8 +330,8 @@ class Global:
 
         diffs = list(aardvark.diff(item1, doc_new_1))
 
-        print('diffs')
-        pprint.pprint(diffs)
+        #print('diffs')
+        #pprint.pprint(diffs)
 
         aardvark.apply(f.d, diffs)
 
