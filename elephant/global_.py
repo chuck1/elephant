@@ -477,17 +477,24 @@ class Global:
             if d1.has_read_permission(user):
                 yield d1
       
+    def find_one(self, user, query, pipe1=[], pipe2=[]):
+        logger.info(f'pipe1 = {pipe1}')
+        logger.info(f'pipe2 = {pipe2}')
 
+        pipe = [
+            {'$match': query},
+            ]
+        pipe = pipe1 + pipe + pipe2
 
+        c = self.coll.files.aggregate(pipe)
 
+        d = next(c)
 
+        d1 = self._factory(d)
 
+        assert d1.has_read_permission(user)
 
-
-
-
-
-
+        return d1
 
 
 
