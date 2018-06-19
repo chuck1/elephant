@@ -451,13 +451,11 @@ class Global:
 
     def find(self, user, query, pipe1=[], pipe2=[]):
 
-        logger.info(f'pipe1 = {pipe1}')
-        logger.info(f'pipe2 = {pipe2}')
-
-        pipe = [
-            {'$match': query},
-            ]
+        pipe = [{'$match': query}]
         pipe = pipe1 + pipe + pipe2
+
+        for _ in pipe:
+            logger.info(_)
 
         c = self.coll.files.aggregate(pipe)
 
