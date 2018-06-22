@@ -201,7 +201,7 @@ class Global:
         return File(self, d)
     
     def check(self):
-        logger.info('check documents')
+        logger.info(f'check collection {self.coll.name}')
 
         # delete test docs
         res = self.coll.files.delete_many({'test_field': {'$exists': True}})
@@ -210,11 +210,11 @@ class Global:
         i = 0
         for d in self.coll.files.find():
             d1 = self._factory(d)
+            logger.info(f'{d1}')
             d1.check()
             i += 1
-        if i == 0:
-           print(f'check {self.coll}')
-           print(f'checked {i} documents')
+          
+        logger.info(f'checked {i} documents')
 
         logger.info('check commits')
         my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
