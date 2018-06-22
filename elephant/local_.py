@@ -146,6 +146,10 @@ class File(elephant.file.File):
 
         self.d["_temp"]["commits"] = commits
 
+    async def temp_messages(self):
+        return
+        yield
+
 class Engine:
     """
     This implements the per-item version concept

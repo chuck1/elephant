@@ -79,10 +79,20 @@ class File:
 
     def has_read_permission(self, user):
         if user is None: return False
+
+        if hasattr(self.e, 'h'):
+            if user == self.e.h.root_user:
+                return True
+
         return user.d["_id"] == self.creator()
 
     def has_write_permission(self, user):
         if user is None: return False
+
+        if hasattr(self.e, 'h'):
+            if user == self.e.h.root_user:
+                return True
+
         return user.d["_id"] == self.creator()
 
     def creator(self):
@@ -106,6 +116,10 @@ class File:
  
     def commits1(self):
         return self.e.coll.commits.find({"files.file_id": self.d["_id"]}).sort([('time', 1)])
+
+    async def temp_messages(self):
+        return
+        yield
  
 def breakpoint(): import pdb; pdb.set_trace();
 
@@ -210,7 +224,7 @@ class Global:
         i = 0
         for d in self.coll.files.find():
             d1 = self._factory(d)
-            logger.info(f'{d1}')
+            logger.debug(f'{d1}')
             d1.check()
             i += 1
           
