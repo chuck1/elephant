@@ -35,7 +35,7 @@ class File:
     def valid(self):
         pass
 
-    def check(self):
+    async def check(self):
         self.creator()
 
     def update_temp(self):
@@ -214,7 +214,7 @@ class Global:
     def _factory(self, d):
         return File(self, d)
     
-    def check(self):
+    async def check(self):
         logger.info(f'check collection {self.coll.name}')
 
         # delete test docs
@@ -225,7 +225,7 @@ class Global:
         for d in self.coll.files.find():
             d1 = self._factory(d)
             logger.debug(f'{d1}')
-            d1.check()
+            await d1.check()
             i += 1
           
         logger.info(f'checked {i} documents')

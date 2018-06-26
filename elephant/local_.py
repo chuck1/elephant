@@ -204,7 +204,7 @@ class Engine:
         self.e_queries = e_queries
 
 
-    def check(self):
+    async def check(self):
         logger.info(f'check collection {self.coll.name}')
 
         # delete test docs
