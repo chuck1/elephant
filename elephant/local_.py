@@ -40,9 +40,11 @@ class File(elephant.file.File):
         try:
             commit0 = next(self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)]))
         except StopIteration:
- 
             print(crayons.red('no commits'))
-            item = elephant.util.clean_document(self.d)
+            pprint.pprint(self.d)
+            raise
+ 
+            item = aardvark.util.clean(self.d)
             diffs = list(aardvark.diff({}, item))
             commit_id = self.e._create_commit_1(self.d['_id'], None, diffs)
             ref = 'master'
@@ -57,9 +59,9 @@ class File(elephant.file.File):
 
         return commit0
 
-    def creator(self):
-
+    def _assert_elephant(self):
         if '_elephant' not in self.d:
+            if self.d.get('_root'): return
             print(crayons.red('no field _elephant'))
 
             commit0 = self._commit0()
@@ -76,6 +78,11 @@ class File(elephant.file.File):
                         {'_id': self.d['_id']}, {'$set': {'_elephant': self.d['_elephant']}})
     
                 print(res.modified_count)
+
+    def creator(self):
+        if self.d.get('_root'): return None
+
+        self._assert_elephant()
 
         commits = self.commits()
 
