@@ -31,60 +31,13 @@ class _AArray:
     def to_array(self):
         return self.d
 
-class EngineDEP:
-    """
-    simple engine for querying a collection and returning _AArray objects
-    """
-    def __init__(self, coll):
-        self.coll = coll
-
-    def _factory(self, d):
-        return _AArray(self.coll, d)
-
-    def put_new(self, doc):
-        doc = aardvark.util.clean(doc)
-        res = self.coll.insert_one(doc)
-        return res
-
-    def put(self, doc_id, doc):
-        if doc_id is None:
-            return self.put_new(doc)
-
-        doc0 = self.coll.find_one({'_id': doc_id})
-        doc0 = aardvark.util.clean(doc0)
-
-        doc1 = aardvark.util.clean(doc)
-
-        diffs = list(aardvark.diff(doc0, doc1))
-        
-        update = aardvark.util.diffs_to_update(diffs, doc)
-
-        logger.info(str(update))
-        if not update:
-            logger.info("updates is empty")
-            return
-
-        res = self.coll.update_one({'_id': doc_id}, update)
-
-    def check(self):
-        print(f'check {self.coll}')
-        for d in self.coll.find():
-            d1 = self._factory(d)
-            d1.creator()
-
-    def find(self, filt):
-        for d in self.coll.find(filt):
-            yield self._factory(d)
-
-    def find_one(self, filt):
-        d = self.coll.find_one(filt)
-        if d is None: return None
-        return self._factory(d)
-
 class File:
     def __init__(self, e, d):
         self.e = e
         self.d = d
+
+    def valid_group(self, docs_0):
+        pass
 
     def _commits(self, ref = None):
 
