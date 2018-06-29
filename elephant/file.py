@@ -71,4 +71,15 @@ class File:
     async def to_array(self):
         return dict(self.d)
 
+    def list_connected(self):
+        yield from self.list_upstream()
+        yield from self.list_downstream()
 
+    def list_upstream(self, query):
+        yield
+        return
+ 
+    def list_downstream(self, query):
+        yield
+        return
+ 
