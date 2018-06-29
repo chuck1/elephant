@@ -36,7 +36,13 @@ class File:
         self.e = e
         self.d = d
 
-    def valid_group(self, docs_0):
+    def get(self, k, default):
+        if k in self.d:
+            return self.d[k]
+        else:
+            return default
+
+    async def valid_group(self, docs_0):
         pass
 
     def _commits(self, ref = None):
@@ -58,12 +64,18 @@ class File:
         else:
             id0 = self.d["_elephant"]["refs"][ref]
 
+            # only different between this and global_.File
+            #ref = self.e.coll.refs.find_one({'name': ref})
+            #id0 = ref["commit_id"]
+
         c0 = _find(id0)
 
         while c0:
             yield c0
             
             c0 = _find(c0["parent"])
+
+
 
     def commits(self, ref = None):
         return reversed(list(self._commits(ref)))

@@ -11,10 +11,11 @@ import logging
 import aardvark
 import aardvark.util
 import elephant.util
+import elephant.file
 
 logger = logging.getLogger(__name__)
 
-class File:
+class File(elephant.file.File):
     def __init__(self, e, d):
         self.e = e
         self.d = d
@@ -73,9 +74,6 @@ class File:
             yield c0
             
             c0 = _find(c0["parent"])
-
-    def commits(self, ref):
-        return reversed(list(self._commits(ref)))
 
     def has_read_permission(self, user):
         if user is None: return False
