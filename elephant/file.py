@@ -87,6 +87,9 @@ class File:
         self.d = d
 
     def _commits(self, ref = None):
+
+        if self.d.get('_root', False): return
+
         def _find(commit_id):
             if '_temp' in self.d:
                 for c in self.d["_temp"]["commits"]:

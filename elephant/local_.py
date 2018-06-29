@@ -34,6 +34,7 @@ class File(elephant.file.File):
         return user.d["_id"] == self.creator()
 
     def commit0(self):
+        if self.d.get('_root', False): return
         return next(self.commits())
 
     def _commit0(self):
@@ -286,7 +287,9 @@ class Engine:
 
         self.coll.commits.update_one({"_id": commit_id}, {"$set": {"file": res.inserted_id}})
 
-        return res
+        item1['_id'] = res.inserted_id
+
+        return self._factory(item1)
 
     def put(self, ref, _id, doc_new_0, user):
 
@@ -345,14 +348,14 @@ class Engine:
     def find_one(self, user, ref, q):
         return self.get_content(ref, user, q)
 
-    def get_content(self, ref, user, filt):
-        f = self.coll.files.find_one(filt)
-        if f is None: return None
-
-        f0 = self._factory(f)
-
+    def _assert_elephant(self, f, f0):
         if '_elephant' not in f:
+
+            if f.get('_root', False): return            
+
             print(crayons.red('local doc has no _elephant field'))
+            raise Exception()
+
             ref = 'master'
             f['_elephant'] = {
                     "ref": ref,
@@ -361,6 +364,17 @@ class Engine:
             self.coll.files.update_one({'_id': f['_id']}, {'$set': {'_elephant': f['_elephant']}})
 
         assert f['_elephant']
+
+    def get_content(self, ref, user, filt):
+        f = self.coll.files.find_one(filt)
+        if f is None: return None
+
+        f0 = self._factory(f)
+
+        if f.get('_root', False): return f0
+
+        self._assert_elephant(f, f0)
+
         
         if ref == f['_elephant']['ref']:
             pass

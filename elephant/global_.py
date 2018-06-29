@@ -322,7 +322,7 @@ class Global:
             '_temp': f.d["_temp"],
             }})
 
-        return res
+        return f
 
     def put(self, file_id, doc_new_0, user):
 
@@ -500,7 +500,10 @@ class Global:
 
         c = self.coll.files.aggregate(pipe)
 
-        d = next(c)
+        try:
+            d = next(c)
+        except StopIteration:
+            return None
 
         d1 = self._factory(d)
 
