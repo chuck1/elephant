@@ -185,6 +185,9 @@ class Global:
         self.ref_name = ref_name
         self._cache = {}
 
+    async def create_indices(self):
+        pass
+
     def pipe1(self):
         # for mongo aggregate
 

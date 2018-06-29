@@ -211,6 +211,8 @@ class Engine:
         self.coll = coll
         self.e_queries = e_queries
 
+    async def create_indices(self):
+        pass
 
     async def check(self):
         logger.info(f'check collection {self.coll.name}')
