@@ -211,7 +211,14 @@ class Global:
 
     def _factory(self, d):
         return File(self, d)
-    
+   
+    def object_or_id(self, o):
+
+        if isinstance(o, bson.objectid.ObjectId):
+            return o, self.get_file_by_id(self.h.root_user, o)
+        else:
+            return o.d['_id'], o
+ 
     async def check(self):
         logger.info(f'check collection {self.coll.name}')
 
