@@ -233,10 +233,6 @@ class Engine:
         logger.info('check commits')
         my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
         for c in self.coll.commits.find():
-            #if 'user' not in c:
-            #    pprint.pprint(c)
-            #    logger.error('commit does not have field user')
-            #    self.coll.commits.update_one({"_id": c["_id"]}, {"$set": {'user': my_id}})
             assert 'user' in c
             assert 'time' in c
             assert isinstance(c['time'], datetime.datetime)

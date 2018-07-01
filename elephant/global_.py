@@ -1,4 +1,5 @@
 import copy
+import contextlib
 import itertools
 import pprint
 import datetime
@@ -7,6 +8,7 @@ import time
 import hashlib
 import bson
 import logging
+import time
 
 import aardvark
 import aardvark.util
@@ -14,6 +16,7 @@ import elephant.util
 import elephant.file
 
 logger = logging.getLogger(__name__)
+logger_mongo = logging.getLogger(__name__ + "-mongo")
 
 class File(elephant.file.File):
     def __init__(self, e, d):
@@ -119,7 +122,6 @@ class File(elephant.file.File):
         return
         yield
  
-def breakpoint(): import pdb; pdb.set_trace();
 
   
 class Global:
@@ -292,28 +294,16 @@ class Global:
         return commit
 
     def put_new(self, doc_new_0, user):
-        print('put new')
-        print('doc_new_0')
-        pprint.pprint(doc_new_0)
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
-        print('doc_new_1')
-        pprint.pprint(doc_new_1)
-
         # need file id to create commit
         res = self.coll.files.insert_one(copy.copy(doc_new_1))
-
-        print('doc_new_1 after insert')
-        pprint.pprint(doc_new_1)
 
         file_id = res.inserted_id
 
         diffs = list(aardvark.diff({}, doc_new_1))
 
-        print('diffs')
-        pprint.pprint(diffs)
-        
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
 
         # save ancestors
@@ -337,13 +327,7 @@ class Global:
         if file_id is None:
             return self.put_new(doc_new_0, user)
 
-        #print('doc_new_0')
-        #pprint.pprint(doc_new_0)
-
         doc_new_1 = aardvark.util.clean(doc_new_0)
-
-        #print('doc_new_1')
-        #pprint.pprint(doc_new_1)
 
         f = self._get_content({"_id": file_id})
         item0 = dict(f.d)
@@ -351,9 +335,6 @@ class Global:
         item1 = aardvark.util.clean(item0)
 
         diffs = list(aardvark.diff(item1, doc_new_1))
-
-        #print('diffs')
-        #pprint.pprint(diffs)
 
         aardvark.apply(f.d, diffs)
 
@@ -472,14 +453,15 @@ class Global:
             yield self._factory(d)
 
     def find(self, user, query, pipe1=[], pipe2=[]):
-
+        
         pipe = [{'$match': query}]
         pipe = pipe1 + pipe + pipe2
 
         for _ in pipe:
-            logger.info(_)
+            logger.debug(_)
 
-        c = self.coll.files.aggregate(pipe)
+        with elephant.util.stopwatch(logger_mongo.info, "aggregate "):
+            c = self.coll.files.aggregate(pipe)
 
         for d in c:
             d1 = self._factory(d)
@@ -498,8 +480,8 @@ class Global:
                 yield d1
       
     def find_one(self, user, query, pipe1=[], pipe2=[]):
-        logger.info(f'pipe1 = {pipe1}')
-        logger.info(f'pipe2 = {pipe2}')
+        logger.debug(f'pipe1 = {pipe1}')
+        logger.debug(f'pipe2 = {pipe2}')
 
         pipe = [
             {'$match': query},
