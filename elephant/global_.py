@@ -192,8 +192,10 @@ class Global:
 
     def pipe1(self):
         # for mongo aggregate
+        for _ in self._pipe_commits():
+            yield _
 
-        yield {'$addFields': {'_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]}}}
+    def _pipe_commits(self):
 
         # commits
         yield {'$lookup': {
@@ -207,6 +209,11 @@ class Global:
                     ],
                 'as': "_temp.commits",
                 }}
+
+        yield {'$addFields': {
+                '_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]},
+                '_temp.first_commit': {'$arrayElemAt': ['$_temp.commits', 0]},
+        }}
 
     def pipe2(self, sort=None):
         # for mongo aggregate
@@ -289,7 +296,9 @@ class Global:
         
         commit['_id'] = res.inserted_id
 
-        self.coll.refs.update_one({'_id': ref['_id']}, {'$set': {'commit_id': res.inserted_id}})
+        self.coll.refs.update_one(
+                {'_id': ref['_id']}, 
+                {'$set': {'commit_id': res.inserted_id}})
 
         return commit
 

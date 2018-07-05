@@ -283,7 +283,8 @@ class Engine:
 
         res = self.coll.files.insert_one(item1)
 
-        self.coll.commits.update_one({"_id": commit_id}, {"$set": {"file": res.inserted_id}})
+        self.coll.commits.update_one(
+                {"_id": commit_id}, {"$set": {"file": res.inserted_id}})
 
         item1['_id'] = res.inserted_id
 
