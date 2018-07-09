@@ -368,6 +368,12 @@ class Engine:
 
         assert f['_elephant']
 
+    async def delete_test_documents(self):
+        
+        res = self.coll.files.delete_many({'test_field': {'$exists': True}})
+
+        logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
+
     def get_content(self, ref, user, filt):
         f = self.coll.files.find_one(filt)
         if f is None: return None

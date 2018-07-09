@@ -190,6 +190,12 @@ class Global:
     async def create_indices(self):
         pass
 
+    async def delete_test_documents(self):
+        
+        res = self.coll.files.delete_many({'test_field': {'$exists': True}})
+
+        logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
+
     def _pipe_commits(self):
 
         # commits
