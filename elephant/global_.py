@@ -190,11 +190,6 @@ class Global:
     async def create_indices(self):
         pass
 
-    def pipe1(self):
-        # for mongo aggregate
-        for _ in self._pipe_commits():
-            yield _
-
     def _pipe_commits(self):
 
         # commits
@@ -214,6 +209,16 @@ class Global:
                 '_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]},
                 '_temp.first_commit': {'$arrayElemAt': ['$_temp.commits', 0]},
         }}
+
+    def _pipe_read_permission(self, user):
+        
+        yield {'$match': {'_temp.first_commit.user': user.d["_id"]}}
+
+    def pipe1(self, user):
+        # for mongo aggregate
+        for _ in self._pipe_commits(): yield _
+        
+        for _ in self._pipe_read_permission(user): yield _
 
     def pipe2(self, sort=None):
         # for mongo aggregate
