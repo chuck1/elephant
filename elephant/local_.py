@@ -28,9 +28,15 @@ class File(elephant.file.File):
         self.creator()
 
     def has_read_permission(self, user):
+        if hasattr(self.e, 'h'):
+            if user == self.e.h.root_user:
+                return True
         return user.d["_id"] == self.creator()
 
     def has_write_permission(self, user):
+        if hasattr(self.e, 'h'):
+            if user == self.e.h.root_user:
+                return True
         return user.d["_id"] == self.creator()
 
     def commit0(self):
@@ -399,6 +405,10 @@ class Engine:
         f["_temp"]["commits"] = commits
 
         return self._factory(f)
+
+    def _find(self, q={}):
+        for d in self.coll.files.find(q):
+            yield self._factory(d)
 
     def find(self, user, filt):
         for d in self.coll.files.find(filt):
