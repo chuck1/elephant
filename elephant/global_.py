@@ -474,8 +474,7 @@ class Global:
 
     def find(self, user, query, pipe1=[], pipe2=[]):
         
-        pipe = [{'$match': query}]
-        pipe = pipe1 + pipe + pipe2
+        pipe = pipe1 + [{'$match': query}] + pipe2
 
         for _ in pipe:
             logger.debug(_)

@@ -12,6 +12,7 @@ import elephant.util
 import elephant.file
 
 logger = logging.getLogger(__name__)
+logger_mongo = logging.getLogger(__name__ + "-mongo")
 
 class _User:
     def __init__(self):
@@ -156,7 +157,8 @@ class File(elephant.file.File):
         """
         commits = list(self.e.coll.commits.find({"file": self.d["_id"]}))
         
-        self.d["_temp"] = {}
+        if "_temp" not in self.d:
+            self.d["_temp"] = {}
 
         self.d["_temp"]["commits"] = commits
 
@@ -410,16 +412,27 @@ class Engine:
         for d in self.coll.files.find(q):
             yield self._factory(d)
 
-    def find(self, user, filt):
-        for d in self.coll.files.find(filt):
+    def pipe0(self):
+        return
+        yield
+
+    def find(self, user, query, pipe0=[], pipe1=[]):
+        
+        pipe = pipe0 + [{'$match': query}] + pipe1
+
+        logger.debug('local find pipeline')
+        for _ in pipe:
+            logger.debug(f'  {_!r}')
+
+        with elephant.util.stopwatch(logger_mongo.info, "aggregate "):
+            c = self.coll.files.aggregate(pipe)
+
+        for d in c:
+            logger.debug(repr(d))
             d1 = self._factory(d)
- 
-            if not d1.has_read_permission(user):
-                continue
- 
-            yield d1
-
-
+            d1.update_temp()
+            if d1.has_read_permission(user):
+                yield d1
 
 
 
