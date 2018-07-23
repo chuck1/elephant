@@ -322,7 +322,7 @@ class Engine:
 
         if not diffs:
             d = self._factory(doc_new_0)
-            d.update_temp()
+            await d.update_temp(user)
 
             if doc_old_0.get("_temp", {}) != d.d["_temp"]:
                 logger.info('update temp')
