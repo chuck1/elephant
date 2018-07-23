@@ -137,7 +137,8 @@ class File(elephant.file.File):
                 pprint.pprint(res)
                 assert 'user' in res
             else:
-                self.update_temp()
+                raise Exception()
+                self.update_temp(user)
                 self.put('master', None)
 
         return commit0['user']
@@ -151,7 +152,7 @@ class File(elephant.file.File):
     def delete(self):
         self.e.coll.files.delete_one({'_id': self.d["_id"]})
 
-    def update_temp(self):
+    async def update_temp(self, user):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
@@ -298,7 +299,7 @@ class Engine:
 
         return self._factory(item1)
 
-    def put(self, ref, _id, doc_new_0, user):
+    async def put(self, ref, _id, doc_new_0, user):
 
         if _id is None:
             return self._put_new(ref, doc_new_0, user)
@@ -333,7 +334,7 @@ class Engine:
 
         parent = el0['refs'][ref]
  
-        d = self.get_content('master', user, {'_id': _id})
+        d = await self.get_content('master', user, {'_id': _id})
 
         if not d.has_write_permission(user):
             raise otter.AccessDenied()
@@ -356,8 +357,8 @@ class Engine:
     def _find_one(self, ref, q):
         return self.get_content(ref, None, q)
 
-    def find_one(self, user, ref, q):
-        return self.get_content(ref, user, q)
+    async def find_one(self, user, ref, q):
+        return await self.get_content(ref, user, q)
 
     def _assert_elephant(self, f, f0):
         if '_elephant' not in f:
@@ -382,7 +383,7 @@ class Engine:
 
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
-    def get_content(self, ref, user, filt):
+    async def get_content(self, ref, user, filt):
         f = self.coll.files.find_one(filt)
         if f is None: return None
 
@@ -406,7 +407,12 @@ class Engine:
 
         f["_temp"]["commits"] = commits
 
-        return self._factory(f)
+        f1 = self._factory(f)
+
+        if f1 is not None:
+            await f1.update_temp(user)
+
+        return f1
 
     def _find(self, q={}):
         for d in self.coll.files.find(q):
@@ -416,7 +422,7 @@ class Engine:
         return
         yield
 
-    def find(self, user, query, pipe0=[], pipe1=[]):
+    async def find(self, user, query, pipe0=[], pipe1=[]):
         
         pipe = pipe0 + [{'$match': query}] + pipe1
 
@@ -430,7 +436,7 @@ class Engine:
         for d in c:
             logger.debug(repr(d))
             d1 = self._factory(d)
-            d1.update_temp()
+            await d1.update_temp(user)
             if d1.has_read_permission(user):
                 yield d1
 
