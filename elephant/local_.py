@@ -299,7 +299,9 @@ class Engine:
 
         return self._factory(item1)
 
-    async def put(self, ref, _id, doc_new_0, user):
+    async def put(self, user, ref, _id, doc_new_0):
+
+        assert isinstance(doc_new_0, dict)
 
         if _id is None:
             return self._put_new(ref, doc_new_0, user)
