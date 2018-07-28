@@ -386,7 +386,9 @@ class Engine:
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
     async def get_content(self, ref, user, filt):
+
         f = self.coll.files.find_one(filt)
+
         if f is None: return None
 
         f0 = self._factory(f)
@@ -401,7 +403,16 @@ class Engine:
         elif ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]:
             pass
         else:
-            Exception(f'ref {ref} does not match {f["_elephant"]["ref"]} or {f["_elephant"]["refs"][f["_elephant"]["ref"]]}')
+            
+            await f0.update_temp(user)
+
+            print('commits')
+            for c in f0.d['_temp']['commits']:
+                print(f'  {c}')
+
+            raise Exception((
+                    f'ref {ref} does not match '
+                    f'{f["_elephant"]["ref"]} or {f["_elephant"]["refs"][f["_elephant"]["ref"]]}'))
 
         commits = list(self.coll.commits.find({"file": f["_id"]}))
         
@@ -420,9 +431,25 @@ class Engine:
         for d in self.coll.files.find(q):
             yield self._factory(d)
 
+    def _pipe_commits(self):
+
+        # commits
+        yield {'$lookup': {
+                'from': self.coll.name + '.commits',
+                'let': {'file_id': '$_id'},
+                'pipeline': [
+                    {'$match': {'$expr': {'$eq': ["$file","$$file_id"]}}},
+                    ],
+                'as': "_temp.commits",
+                }}
+
+        yield {'$addFields': {
+                '_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]},
+                '_temp.first_commit': {'$arrayElemAt': ['$_temp.commits', 0]},
+        }}
+
     def pipe0(self):
-        return
-        yield
+        yield from self._pipe_commits()
 
     async def find(self, user, query, pipe0=[], pipe1=[]):
         
