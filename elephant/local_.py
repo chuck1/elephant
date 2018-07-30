@@ -8,6 +8,8 @@ import crayons
 import aardvark
 import logging
 
+import networkx as nx
+
 import elephant.util
 import elephant.file
 
@@ -220,6 +222,9 @@ class Engine:
         self.coll = coll
         self.e_queries = e_queries
 
+        # the commit graph for the docs in this collection
+        self.commit_graph = nx.DiGraph()
+
     async def create_indices(self):
         pass
 
@@ -248,6 +253,16 @@ class Engine:
 
     def _factory(self, d):
         return File(self, d)
+
+    def _commit_path(self, c0, c1):
+
+        
+
+        paths_ = nx.shortest_simple_paths(g,
+                c0['_id'],
+                c1['_id'],
+                )
+
 
     def _create_commit_1(self, file_id, parent, diffs):
         diffs_array = [d.to_array() for d in diffs]
