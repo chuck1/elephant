@@ -400,26 +400,17 @@ class Engine:
 
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
-    async def get_path(self, c_id_0, c_id_1):
+    async def get_path(self, c_id_0):
         # assumes that c_id_0 is older than c_id_1
 
         c_0 = self.coll.commits.find_one({"_id": c_id_0})
-        c_1 = self.coll.commits.find_one({"_id": c_id_1})
   
-        print('c_0')
-        pprint.pprint(c_0)
-        print('c_1')
-        pprint.pprint(c_1)
-
-        path = [c_1]
+        path = [c_0]
 
         while True:
-            if path[-1]["parent"] == c_id_0:
-                path.append(c_0)
-                break
-            else:
-                c = self.coll.commits.find_one({"_id": path[0]["parent"]})
-                path.append(c)
+            if path[-1]["parent"] is None: break
+            c = self.coll.commits.find_one({"_id": path[-1]["parent"]})
+            path.append(c)
 
         path = list(reversed(path))
 
@@ -428,6 +419,14 @@ class Engine:
             pprint.pprint(c)
 
         return path
+
+    async def apply_path(self, path, a):
+        
+        for c in path:
+            diffs = aardvark.parse_diffs(c['changes'])
+            a = aardvark.apply(a, diffs)
+
+        return a
 
     async def get_content(self, ref, user, filt):
 
@@ -440,7 +439,6 @@ class Engine:
         if f.get('_root', False): return f0
 
         self._assert_elephant(f, f0)
-
         
         if ref == f['_elephant']['ref']:
             pass
@@ -456,15 +454,27 @@ class Engine:
 
             c_id_1 = f["_elephant"]["refs"][f["_elephant"]["ref"]]
 
-            path = await self.get_path(ref, c_id_1)
+            path = await self.get_path(ref)
 
-            print('need to undo:')
-            for c in reversed(path[1:]):
-                pprint.pprint(c)
+            a = await self.apply_path(path, {})
 
-            raise Exception((
-                    f'ref {ref} does not match '
-                    f'{f["_elephant"]["ref"]} or {f["_elephant"]["refs"][f["_elephant"]["ref"]]}'))
+            print('created:')
+            pprint.pprint(a)
+
+            a['_id'] = f['_id']
+
+            if '_elephant' not in a:
+                a['_elephant'] = {}
+
+            a['_elephant']['ref'] = ref
+            a['_elephant']['refs'] = f['_elephant']['refs']
+
+            f2 = self._factory(a)
+
+            await f2.update_temp(user)
+
+            return f2
+
 
         commits = list(self.coll.commits.find({"file": f["_id"]}))
         
