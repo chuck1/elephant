@@ -400,6 +400,35 @@ class Engine:
 
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
+    async def get_path(self, c_id_0, c_id_1):
+        # assumes that c_id_0 is older than c_id_1
+
+        c_0 = self.coll.commits.find_one({"_id": c_id_0})
+        c_1 = self.coll.commits.find_one({"_id": c_id_1})
+  
+        print('c_0')
+        pprint.pprint(c_0)
+        print('c_1')
+        pprint.pprint(c_1)
+
+        path = [c_1]
+
+        while True:
+            if path[-1]["parent"] == c_id_0:
+                path.append(c_0)
+                break
+            else:
+                c = self.coll.commits.find_one({"_id": path[0]["parent"]})
+                path.append(c)
+
+        path = list(reversed(path))
+
+        print('path')
+        for c in path:
+            pprint.pprint(c)
+
+        return path
+
     async def get_content(self, ref, user, filt):
 
         f = self.coll.files.find_one(filt)
@@ -424,6 +453,14 @@ class Engine:
             print('commits')
             for c in f0.d['_temp']['commits']:
                 print(f'  {c}')
+
+            c_id_1 = f["_elephant"]["refs"][f["_elephant"]["ref"]]
+
+            path = await self.get_path(ref, c_id_1)
+
+            print('need to undo:')
+            for c in reversed(path[1:]):
+                pprint.pprint(c)
 
             raise Exception((
                     f'ref {ref} does not match '
