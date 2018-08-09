@@ -333,9 +333,9 @@ class Engine:
 
         diffs = list(aardvark.diff(doc_old_1, doc_new_1))
 
-        logger.info('diffs')
+        logger.debug('diffs')
         for d in diffs:
-            logger.info(repr(d))
+            logger.debug(repr(d))
 
         if not diffs:
             d = self._factory(doc_new_0)
