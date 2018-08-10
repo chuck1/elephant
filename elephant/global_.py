@@ -498,7 +498,7 @@ class Global:
             if d1.has_read_permission(user):
                 yield d1
       
-    def find_one(self, user, query, pipe1=[], pipe2=[]):
+    async def find_one(self, user, query, pipe1=[], pipe2=[]):
         logger.debug(f'pipe1 = {pipe1}')
         logger.debug(f'pipe2 = {pipe2}')
 

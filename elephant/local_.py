@@ -341,7 +341,7 @@ class Engine:
             d = self._factory(doc_new_0)
             await d.update_temp(user)
 
-            if doc_old_0.get("_temp", {}) != d.d["_temp"]:
+            if doc_old_0.get("_temp", {}) != d.d.get("_temp", {}):
                 logger.info('update temp')
                 update = {'$set': {}}
                 update['$set']['_temp'] = d.d["_temp"]
