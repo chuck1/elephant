@@ -158,12 +158,14 @@ class File(elephant.file.File):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
-        commits = list(self.e.coll.commits.find({"file": self.d["_id"]}))
-        
-        if "_temp" not in self.d:
-            self.d["_temp"] = {}
 
-        self.d["_temp"]["commits"] = commits
+        if "_temp" not in self.d: self.d["_temp"] = {}
+
+        if "commits" not in self.d["_temp"]:
+
+            commits = list(self.e.coll.commits.find({"file": self.d["_id"]}))
+
+            self.d["_temp"]["commits"] = commits
 
     async def temp_messages(self):
         return
@@ -528,6 +530,10 @@ class Engine:
             logger.debug(repr(d))
             d1 = self._factory(d)
             await d1.update_temp(user)
+
+            if "_temp" not in d1.d: breakpoint()
+            if "commits" not in d1.d["_temp"]: breakpoint()
+
             if d1.has_read_permission(user):
                 yield d1
 

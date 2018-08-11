@@ -51,6 +51,10 @@ class File:
 
         def _find(commit_id):
             if '_temp' in self.d:
+
+                if not "commits" in self.d["_temp"]:
+                    logger.warning(f"{self!r} has not field '_temp.commits'")
+
                 for c in self.d["_temp"]["commits"]:
                     if c["_id"] == commit_id:
                         return c

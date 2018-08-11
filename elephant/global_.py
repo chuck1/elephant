@@ -220,7 +220,7 @@ class Global:
         
         yield {'$match': {'_temp.first_commit.user': user.d["_id"]}}
 
-    def pipe1(self, user):
+    def pipe0(self, user):
         # for mongo aggregate
         for _ in self._pipe_commits(): yield _
         
