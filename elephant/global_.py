@@ -226,7 +226,7 @@ class Global:
         
         for _ in self._pipe_read_permission(user): yield _
 
-    def pipe2(self, sort=None):
+    def pipe1(self, sort=None):
         # for mongo aggregate
 
         if sort:
@@ -460,22 +460,23 @@ class Global:
 
             yield f1
 
-    def _find(self, query, pipe1=[], pipe2=[]):
+    def _find(self, query, pipe0=[], pipe1=[]):
 
         pipe = [
             {'$match': query},
             ]
-        pipe = pipe1 + pipe + pipe2
+        pipe = pipe0 + pipe + pipe1
 
         c = self.coll.files.aggregate(pipe)
 
         for d in c:
             yield self._factory(d)
 
-    def find(self, user, query, pipe1=[], pipe2=[]):
+    def find(self, user, query, pipe0=[], pipe1=[]):
         
-        pipe = pipe1 + [{'$match': query}] + pipe2
+        pipe = pipe0 + [{'$match': query}] + pipe1
 
+        logger.debug('pipe:')
         for _ in pipe:
             logger.debug(_)
 
