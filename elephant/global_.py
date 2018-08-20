@@ -46,7 +46,23 @@ class File(elephant.file.File):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
-        pass
+
+        await self.temp_commits()
+
+    async def temp_commits(self):
+
+        pipe = [
+                {'$addFields': {'files1': '$files'}},
+                {'$unwind': '$files1'},
+                {'$match': {'$expr': {'$eq': ["$files1.file_id", self.d["_id"]]}}},
+                {'$project': {'files1': 0}},
+                ]
+
+        self.d["_temp"]["commits"] = self.coll.commits.aggregate(pipe)
+
+        self.d["_temp"]["last_commit"]  = self.d['_temp']['commits'][-1]
+
+        self.d["_temp"]["first_commit"] = self.d["_temp"]["commits"][ 0]
 
     def delete(self):
         self.e.coll.files.delete_one({'_id': self.d["_id"]})
@@ -196,25 +212,6 @@ class Global:
 
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
-    def _pipe_commits(self):
-
-        # commits
-        yield {'$lookup': {
-                'from': self.coll.name + '.commits',
-                'let': {'file_id': '$_id'},
-                'pipeline': [
-                    {'$addFields': {'files1': '$files'}},
-                    {'$unwind': '$files1'},
-                    {'$match': {'$expr': {'$eq': ["$files1.file_id","$$file_id"]}}},
-                    {'$project': {'files1': 0}},
-                    ],
-                'as': "_temp.commits",
-                }}
-
-        yield {'$addFields': {
-                '_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]},
-                '_temp.first_commit': {'$arrayElemAt': ['$_temp.commits', 0]},
-        }}
 
     def _pipe_read_permission(self, user):
         
@@ -222,7 +219,6 @@ class Global:
 
     def pipe0(self, user):
         # for mongo aggregate
-        for _ in self._pipe_commits(): yield _
         
         for _ in self._pipe_read_permission(user): yield _
 
