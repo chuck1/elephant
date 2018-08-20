@@ -309,7 +309,7 @@ class Global:
 
         return commit
 
-    def put_new(self, doc_new_0, user):
+    async def put_new(self, doc_new_0, user):
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
@@ -329,7 +329,7 @@ class Global:
 
         f = self._factory(item1)
 
-        f.update_temp()
+        await f.update_temp()
 
         self.coll.files.update_one({'_id': file_id}, {'$set': {
             '_elephant': {"commit_id": commit['_id']},
@@ -341,7 +341,7 @@ class Global:
     async def put(self, file_id, doc_new_0, user):
 
         if file_id is None:
-            return self.put_new(doc_new_0, user)
+            return await self.put_new(doc_new_0, user)
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
