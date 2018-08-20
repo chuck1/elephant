@@ -42,7 +42,7 @@ class File(elephant.file.File):
     async def check(self):
         self.creator()
 
-    def update_temp(self):
+    async def update_temp(self):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
