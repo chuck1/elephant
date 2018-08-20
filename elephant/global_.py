@@ -499,14 +499,14 @@ class Global:
             if d1.has_read_permission(user):
                 yield d1
       
-    async def find_one(self, user, query, pipe1=[], pipe2=[]):
+    async def find_one(self, user, query, pipe0=[], pipe1=[]):
+        logger.debug(f'pipe0 = {pipe0}')
         logger.debug(f'pipe1 = {pipe1}')
-        logger.debug(f'pipe2 = {pipe2}')
 
         pipe = [
             {'$match': query},
             ]
-        pipe = pipe1 + pipe + pipe2
+        pipe = pipe0 + pipe + pipe1
 
         c = self.coll.files.aggregate(pipe)
 
