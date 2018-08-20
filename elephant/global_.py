@@ -58,7 +58,7 @@ class File(elephant.file.File):
                 {'$project': {'files1': 0}},
                 ]
 
-        self.d["_temp"]["commits"] = self.coll.commits.aggregate(pipe)
+        self.d["_temp"]["commits"] = list(self.e.coll.commits.aggregate(pipe))
 
         self.d["_temp"]["last_commit"]  = self.d['_temp']['commits'][-1]
 
@@ -70,8 +70,8 @@ class File(elephant.file.File):
     def update(self, updates):
         self.e.coll.files.update_one({"_id": self.d['_id']}, updates)
 
-    def put(self, user):
-        return self.e.put(self.d["_id"], self.d, user)
+    async def put(self, user=None):
+        return await self.e.put(self.d["_id"], self.d, user)
 
     def _commits(self, ref):
         def _find(commit_id):
@@ -338,7 +338,7 @@ class Global:
 
         return f
 
-    def put(self, file_id, doc_new_0, user):
+    async def put(self, file_id, doc_new_0, user):
 
         if file_id is None:
             return self.put_new(doc_new_0, user)
@@ -354,7 +354,7 @@ class Global:
 
         aardvark.apply(f.d, diffs)
 
-        f.update_temp()
+        await f.update_temp()
 
         if not diffs:
             if item0.get("temp", {}) != f.d["_temp"]:
