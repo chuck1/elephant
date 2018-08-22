@@ -375,7 +375,10 @@ class Global:
             update['$set'] = {}
 
         update['$set']['_elephant.commit_id'] = commit["_id"]
-        update['$set']['_temp'] = f.d["_temp"]
+        update['$set']['_temp'] = await f.temp_to_array()
+
+        logger.info("update:")
+        logger.info(repr(update))
 
         res = self.coll.files.update_one({'_id': file_id}, update)
 

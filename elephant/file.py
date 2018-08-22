@@ -87,6 +87,9 @@ class File:
     async def to_array(self):
         return dict(self.d)
 
+    async def temp_to_array(self):
+        return dict(self.d['_temp'])
+
     def list_connected(self, user, query=None):
         yield from self.list_upstream(user, query)
         yield from self.list_downstream(user, query)
