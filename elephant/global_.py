@@ -338,7 +338,7 @@ class Global:
 
         return f
 
-    async def put(self, file_id, doc_new_0, user):
+    async def put(self, user, file_id, doc_new_0):
 
         if file_id is None:
             return await self.put_new(doc_new_0, user)
