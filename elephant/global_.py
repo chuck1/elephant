@@ -71,7 +71,7 @@ class File(elephant.file.File):
         self.e.coll.files.update_one({"_id": self.d['_id']}, updates)
 
     async def put(self, user=None):
-        return await self.e.put(self.d["_id"], self.d, user)
+        return await self.e.put(user, self.d["_id"], self.d)
 
     def _commits(self, ref):
         def _find(commit_id):
