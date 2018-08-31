@@ -345,7 +345,8 @@ class Global:
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
-        f = self._get_content({"_id": file_id})
+        f = self._find_one_by_id(file_id)
+
         item0 = dict(f.d)
 
         item1 = aardvark.util.clean(item0)
@@ -386,50 +387,45 @@ class Global:
 
         return res
 
-    def get_file_by_id(self, user, _id):
-        #if _id in self._cache:
-        #    return self._cache[_id]
-        
-        f = self.get_content(user, {"_id": _id})
+    def fine_one_by_id(self, user, _id):
+        return self.fine_one(user, {"_id": _id})
 
-        self._cache[_id] = f
-
-        return f
-
-    def _get_content(self, filt):
+    async def _find_one(self, query, pipe0=[], pipe1=[]):
         """
         do not check permissions
         """
-        f = self.coll.files.find_one(filt)
-        
-        if f is None: return
 
-        commits = list(self.coll.commits.find({"files.file_id": f['_id']}))
-        
-        assert commits
+        pipe = pipe0 + [{'$match': query}] + pipe1
 
-        if "_temp" not in f:
-            f["_temp"] = {}
+        c = self.coll.files.aggregate(pipe)
 
-        f["_temp"]["commits"] = commits
+        try:
+            d = next(c)
+        except StopIteration:
+            return None
 
-        return self._factory(f)
 
-    def get_content(self, user, filt):
-        f = self.coll.files.find_one(filt)
-        
-        if f is None: return
-
-        commits = list(self.coll.commits.find({"files.file_id": f['_id']}))
+        commits = list(self.coll.commits.find({"files.file_id": d['_id']}))
         
         assert commits
 
-        if "_temp" not in f:
-            f["_temp"] = {}
+        if "_temp" not in d:
+            d["_temp"] = {}
 
-        f["_temp"]["commits"] = commits
+        d["_temp"]["commits"] = commits
 
-        return self._factory(f)
+
+        d1 = self._factory(d)
+
+        return d1
+
+    async def find_one(self, user, query, pipe0=[], pipe1=[]):
+
+        f = await self._find_one(query)
+
+        if not f.has_read_permission(user): raise elephant.util.AccessDenied()
+
+        return f
 
     def _add_commits(self, user, files):
         files_ids = [f["_id"] for f in files]
@@ -498,27 +494,5 @@ class Global:
             if d1.has_read_permission(user):
                 yield d1
       
-    async def find_one(self, user, query, pipe0=[], pipe1=[]):
-        logger.debug(f'pipe0 = {pipe0}')
-        logger.debug(f'pipe1 = {pipe1}')
-
-        pipe = [
-            {'$match': query},
-            ]
-        pipe = pipe0 + pipe + pipe1
-
-        c = self.coll.files.aggregate(pipe)
-
-        try:
-            d = next(c)
-        except StopIteration:
-            return None
-
-        d1 = self._factory(d)
-
-        assert d1.has_read_permission(user)
-
-        return d1
-
 
 
