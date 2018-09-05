@@ -64,7 +64,7 @@ class File(elephant.file.File):
 
         self.d["_temp"]["first_commit"] = self.d["_temp"]["commits"][ 0]
 
-    def delete(self):
+    async def delete(self):
         self.e.coll.files.delete_one({'_id': self.d["_id"]})
 
     def update(self, updates):
@@ -96,12 +96,16 @@ class File(elephant.file.File):
 
     def has_read_permission(self, user):
         if user is None: return False
-
+        
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
                 return True
+        
+        creator = self.creator()
+        
+        logger.debug("creator = {creator}")
 
-        return user.d["_id"] == self.creator()
+        return user.d["_id"] == creator
 
     def has_write_permission(self, user):
         if user is None: return False
@@ -231,10 +235,10 @@ class Global:
     def _factory(self, d):
         return File(self, d)
    
-    def object_or_id(self, o):
+    async def object_or_id(self, o):
 
         if isinstance(o, bson.objectid.ObjectId):
-            return o, self.get_file_by_id(self.h.root_user, o)
+            return o, await self._find_one_by_id(o)
         else:
             return o.d['_id'], o
  
@@ -309,7 +313,7 @@ class Global:
 
         return commit
 
-    async def put_new(self, doc_new_0, user):
+    async def put_new(self, user, doc_new_0):
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
@@ -341,11 +345,11 @@ class Global:
     async def put(self, user, file_id, doc_new_0):
 
         if file_id is None:
-            return await self.put_new(doc_new_0, user)
+            return await self.put_new(user, doc_new_0)
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
-        f = self._find_one_by_id(file_id)
+        f = await self._find_one_by_id(file_id)
 
         item0 = dict(f.d)
 
@@ -387,8 +391,11 @@ class Global:
 
         return res
 
-    def fine_one_by_id(self, user, _id):
-        return self.fine_one(user, {"_id": _id})
+    async def _find_one_by_id(self, _id):
+        return await self._find_one({"_id": _id})
+
+    async def find_one_by_id(self, user, _id):
+        return await self.find_one(user, {"_id": _id})
 
     async def _find_one(self, query, pipe0=[], pipe1=[]):
         """
@@ -417,11 +424,15 @@ class Global:
 
         d1 = self._factory(d)
 
+        assert d1 is not None
+
         return d1
 
     async def find_one(self, user, query, pipe0=[], pipe1=[]):
 
         f = await self._find_one(query)
+
+        if f is None: return None
 
         if not f.has_read_permission(user): raise elephant.util.AccessDenied()
 
@@ -467,7 +478,7 @@ class Global:
         for d in c:
             yield self._factory(d)
 
-    def find(self, user, query, pipe0=[], pipe1=[]):
+    async def find(self, user, query, pipe0=[], pipe1=[]):
         
         pipe = pipe0 + [{'$match': query}] + pipe1
 

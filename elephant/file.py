@@ -94,11 +94,11 @@ class File:
         yield from self.list_upstream(user, query)
         yield from self.list_downstream(user, query)
 
-    def list_upstream(self, user, query=None):
+    async def list_upstream(self, user, query=None):
         yield
         return
  
-    def list_downstream(self, user, query=None):
+    async def list_downstream(self, user, query=None):
         yield
         return
  

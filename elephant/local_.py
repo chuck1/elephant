@@ -151,7 +151,7 @@ class File(elephant.file.File):
     #def commits(self):
     #    return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
        
-    def delete(self):
+    async def delete(self):
         self.e.coll.files.delete_one({'_id': self.d["_id"]})
 
     async def update_temp(self, user):
