@@ -18,17 +18,21 @@ import elephant.file
 logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
 
+class Temp: pass
+
 class File(elephant.file.File):
     def __init__(self, e, d):
+        assert isinstance(d, dict)
         self.e = e
         self.d = d
+        self.temp = Temp()
 
     def get(self, k, default):
         if k in self.d:
             return self.d[k]
         return default
 
-    def __getitem__(self, k):
+    def get(self, k):
         return self.d[k]
 
     def __setitem__(self, k, v):
