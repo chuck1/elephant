@@ -27,6 +27,9 @@ class File(elephant.file.File):
         self.d = d
         self.temp = Temp()
 
+    def freeze(self):
+        return self.d["_id"]
+
     def get(self, k, default):
         if k in self.d:
             return self.d[k]
@@ -46,7 +49,7 @@ class File(elephant.file.File):
     async def check(self):
         self.creator()
 
-    async def update_temp(self):
+    async def update_temp(self, user):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
@@ -148,7 +151,7 @@ class File(elephant.file.File):
  
 
   
-class Global:
+class Engine:
     """
     This implements the collection-wide commit concept
     
@@ -337,7 +340,7 @@ class Global:
 
         f = self._factory(item1)
 
-        await f.update_temp()
+        await f.update_temp(user)
 
         self.coll.files.update_one({'_id': file_id}, {'$set': {
             '_elephant': {"commit_id": commit['_id']},
@@ -363,7 +366,7 @@ class Global:
 
         aardvark.apply(f.d, diffs)
 
-        await f.update_temp()
+        await f.update_temp(user)
 
         if not diffs:
             if item0.get("temp", {}) != f.d["_temp"]:

@@ -24,6 +24,18 @@ class File(elephant.file.File):
     def __init__(self, e, d):
         super(File, self).__init__(e, d)
 
+    def freeze(self):
+        if isinstance(self.d['_elephant']['ref'], bson.objectid.ObjectId):
+            return {
+                'id': self.d['_id'],
+                'ref': self.d['_elephant']['ref'],
+                }
+        else:
+            return {
+                'id': self.d['_id'],
+                'ref': self.d['_elephant']['refs'][self.d['_elephant']['ref']],
+                }
+
     def valid(self):
         pass
 
