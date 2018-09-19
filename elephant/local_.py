@@ -49,7 +49,7 @@ class File(elephant.file.File):
                 return True
         return user.d["_id"] == self.creator()
 
-    def has_write_permission(self, user):
+    async def has_write_permission(self, user):
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
                 return True
@@ -370,7 +370,7 @@ class Engine:
  
         d = await self.get_content('master', user, {'_id': _id})
 
-        if not d.has_write_permission(user):
+        if not (await d.has_write_permission(user)):
             raise otter.AccessDenied()
 
         commit_id = self._create_commit(_id, parent, diffs, user)

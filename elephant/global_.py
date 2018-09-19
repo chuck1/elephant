@@ -47,7 +47,13 @@ class File(elephant.file.File):
         pass
 
     async def check(self):
-        self.creator()
+        creator = await self.creator()
+
+        self.d["_temp"]
+        self.d["_temp"]["first_commit"]
+
+        # used in the read_permissions pipe
+        self.d["_temp"]["first_commit"]["user"]
 
     async def update_temp(self, user):
         """
@@ -136,14 +142,25 @@ class File(elephant.file.File):
 
         return b
 
-    def has_write_permission(self, user):
-        if user is None: return False
+    async def has_write_permission(self, user):
+        if user is None:
+            logger.info("write permission denied: user is None")
+            return False
 
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
+                logger.info("write permission allowed: user is root")
                 return True
 
-        return user.d["_id"] == self.creator()
+        creator = await self.creator()
+        if user.freeze() == creator.freeze():
+            logger.info("write permission allowed: user is creator")
+            return True
+
+        logger.info("write permission denied: user is not root or creator")
+        logger.info(f"user = {user}")
+        logger.info(f"user = {user}")
+        return False
 
     async def creator(self):
         commits = self.commits1()
@@ -278,7 +295,8 @@ class Engine:
 
         # delete test docs
         res = self.coll.files.delete_many({'test_field': {'$exists': True}})
-        logger.info(f'deleted {res.deleted_count} test documents')
+
+        logger.warning(f'deleted {res.deleted_count} test documents')
 
         i = 0
         for d in self.coll.files.find():
@@ -287,15 +305,11 @@ class Engine:
             await d1.check()
             i += 1
           
-        logger.info(f'checked {i} documents')
+        logger.warning(f'checked {i} documents')
 
-        logger.info('check commits')
-        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
+        logger.warning('check commits')
+
         for c in self.coll.commits.find():
-            #if 'user' not in c:
-            #    pprint.pprint(c)
-            #    logger.error('commit does not have field user')
-            #    self.coll.commits.update_one({"_id": c["_id"]}, {"$set": {'user': my_id}})
             assert 'user' in c
             assert 'time' in c
             assert isinstance(c['time'], datetime.datetime)
@@ -400,7 +414,7 @@ class Engine:
             
             return f
 
-        if not f.has_write_permission(user):
+        if not (await f.has_write_permission(user)):
             raise elephant.util.AccessDenied()
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
