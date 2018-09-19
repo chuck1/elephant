@@ -12,6 +12,7 @@ import networkx as nx
 
 import elephant.util
 import elephant.file
+import elephant.encode
 
 logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
@@ -252,7 +253,7 @@ class Engine:
 
         i = 0
         for d in self.coll.files.find():
-            d1 = self._factory(d)
+            d1 = await self._factory(d)
             d1.check()
             i += 1
         if i == 0:
@@ -265,7 +266,7 @@ class Engine:
             assert 'time' in c
             assert isinstance(c['time'], datetime.datetime)
 
-    def _factory(self, d):
+    async def _factory(self, d):
         return File(self, d)
 
     def _commit_path(self, c0, c1):
@@ -307,7 +308,7 @@ class Engine:
 
         return res.inserted_id
 
-    def _put_new(self, ref, item, user):
+    async def _put_new(self, ref, item, user):
         diffs = list(aardvark.diff({}, item))
 
         commit_id = self._create_commit(None, None, diffs, user)
@@ -326,14 +327,16 @@ class Engine:
 
         item1['_id'] = res.inserted_id
 
-        return self._factory(item1)
+        return await self._factory(item1)
 
     async def put(self, user, ref, _id, doc_new_0):
+
+        doc_new_0 = elephant.encode.encode(doc_new_0)
 
         assert isinstance(doc_new_0, dict)
 
         if _id is None:
-            return self._put_new(ref, doc_new_0, user)
+            return await self._put_new(ref, doc_new_0, user)
 
         doc_old_0 = self.coll.files.find_one({'_id': _id})
 
@@ -352,7 +355,7 @@ class Engine:
             logger.debug(repr(d))
 
         if not diffs:
-            d = self._factory(doc_new_0)
+            d = await self._factory(doc_new_0)
             await d.update_temp(user)
 
             if doc_old_0.get("_temp", {}) != d.d.get("_temp", {}):
@@ -448,7 +451,7 @@ class Engine:
 
         if f is None: return None
 
-        f0 = self._factory(f)
+        f0 = await self._factory(f)
 
         if f.get('_root', False): return f0
 
@@ -483,7 +486,7 @@ class Engine:
             a['_elephant']['ref'] = ref
             a['_elephant']['refs'] = f['_elephant']['refs']
 
-            f2 = self._factory(a)
+            f2 = await self._factory(a)
 
             await f2.update_temp(user)
 
@@ -496,16 +499,16 @@ class Engine:
 
         f["_temp"]["commits"] = commits
 
-        f1 = self._factory(f)
+        f1 = await self._factory(f)
 
         if f1 is not None:
             await f1.update_temp(user)
 
         return f1
 
-    def _find(self, q={}):
+    async def _find(self, q={}):
         for d in self.coll.files.find(q):
-            yield self._factory(d)
+            yield await self._factory(d)
 
     def _pipe_commits(self):
 
@@ -524,7 +527,7 @@ class Engine:
                 '_temp.first_commit': {'$arrayElemAt': ['$_temp.commits', 0]},
         }}
 
-    def pipe0(self):
+    def pipe0(self, user):
         yield from self._pipe_commits()
 
     async def find(self, user, query, pipe0=[], pipe1=[]):
@@ -540,7 +543,7 @@ class Engine:
 
         for d in c:
             logger.debug(repr(d))
-            d1 = self._factory(d)
+            d1 = await self._factory(d)
             await d1.update_temp(user)
 
             if "_temp" not in d1.d: breakpoint()

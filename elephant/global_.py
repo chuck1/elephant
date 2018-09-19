@@ -9,7 +9,7 @@ import hashlib
 import bson
 import logging
 import time
-
+import crayons
 import aardvark
 import aardvark.util
 import elephant.util
@@ -56,6 +56,17 @@ class File(elephant.file.File):
 
         await self.temp_commits()
 
+    def _commits_1(self):
+
+        pipe = [
+                {'$addFields': {'files1': '$files'}},
+                {'$unwind': '$files1'},
+                {'$match': {'$expr': {'$eq': ["$files1.file_id", self.d["_id"]]}}},
+                {'$project': {'files1': 0}},
+                ]
+
+        return list(self.e.coll.commits.aggregate(pipe))
+
     async def temp_commits(self):
 
         pipe = [
@@ -65,6 +76,8 @@ class File(elephant.file.File):
                 {'$project': {'files1': 0}},
                 ]
 
+        if not "_temp" in self.d: self.d["_temp"] = {}
+  
         self.d["_temp"]["commits"] = list(self.e.coll.commits.aggregate(pipe))
 
         self.d["_temp"]["last_commit"]  = self.d['_temp']['commits'][-1]
@@ -101,18 +114,27 @@ class File(elephant.file.File):
             
             c0 = _find(c0["parent"])
 
-    def has_read_permission(self, user):
-        if user is None: return False
+    async def has_read_permission(self, user):
+        if user is None: 
+            logger.info("read denied: user is None")
+            return False
         
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
+                logger.info("read allowed: user is root_user")
                 return True
         
-        creator = self.creator()
+        creator = await self.creator()
         
-        logger.debug("creator = {creator}")
+        logger.debug(f"user    = {user} {user.freeze()}")
+        logger.debug(f"creator = {creator} {creator.freeze()}")
 
-        return user.d["_id"] == creator
+        b = user.freeze() == creator.freeze()
+
+        if b:
+            logger.info("read allowed: user is creator")
+
+        return b
 
     def has_write_permission(self, user):
         if user is None: return False
@@ -123,7 +145,7 @@ class File(elephant.file.File):
 
         return user.d["_id"] == self.creator()
 
-    def creator(self):
+    async def creator(self):
         commits = self.commits1()
 
         try:
@@ -140,7 +162,9 @@ class File(elephant.file.File):
             #self.e.coll.commits.update_one({'_id': commit0['_id']}, 
             #{'$set': {'user': commit0['user']}})
 
-        return commit0['user']
+        user_id = commit0['user']
+        user = await self.e.h.e_users._find_one("master", {"_id": user_id})
+        return user
  
     def commits1(self):
         return self.e.coll.commits.find({"files.file_id": self.d["_id"]}).sort([('time', 1)])
@@ -239,7 +263,7 @@ class Engine:
         if sort:
             yield {'$sort': bson.son.SON(sort)}
 
-    def _factory(self, d):
+    async def _factory(self, d):
         return File(self, d)
    
     async def object_or_id(self, o):
@@ -258,7 +282,7 @@ class Engine:
 
         i = 0
         for d in self.coll.files.find():
-            d1 = self._factory(d)
+            d1 = await self._factory(d)
             logger.debug(f'{d1}')
             await d1.check()
             i += 1
@@ -338,7 +362,7 @@ class Engine:
         item1["_id"] = file_id
         item1["_temp"] = {}
 
-        f = self._factory(item1)
+        f = await self._factory(item1)
 
         await f.update_temp(user)
 
@@ -374,7 +398,7 @@ class Engine:
                 update['$set']['_temp'] = f.d["_temp"]
                 res = self.coll.files.update_one({'_id': file_id}, update)
             
-            return
+            return f
 
         if not f.has_write_permission(user):
             raise elephant.util.AccessDenied()
@@ -396,7 +420,7 @@ class Engine:
 
         self._cache[file_id] = f
 
-        return res
+        return f
 
     async def _find_one_by_id(self, _id):
         return await self._find_one({"_id": _id})
@@ -418,10 +442,11 @@ class Engine:
         except StopIteration:
             return None
 
-
         commits = list(self.coll.commits.find({"files.file_id": d['_id']}))
         
-        assert commits
+        if not commits:
+            pprint.pprint(d)
+            raise Exception()
 
         if "_temp" not in d:
             d["_temp"] = {}
@@ -429,7 +454,7 @@ class Engine:
         d["_temp"]["commits"] = commits
 
 
-        d1 = self._factory(d)
+        d1 = await self._factory(d)
 
         assert d1 is not None
 
@@ -441,11 +466,11 @@ class Engine:
 
         if f is None: return None
 
-        if not f.has_read_permission(user): raise elephant.util.AccessDenied()
+        if not (await f.has_read_permission(user)): raise elephant.util.AccessDenied()
 
         return f
 
-    def _add_commits(self, user, files):
+    async def _add_commits(self, user, files):
         files_ids = [f["_id"] for f in files]
 
         commits = list(self.coll.commits.find({"files.file_id": {"$in": files_ids}}))
@@ -466,50 +491,46 @@ class Engine:
 
             f["_temp"]["commits"] = commits1
 
-            f1 = self._factory(f)
+            f1 = await self._factory(f)
             #f1.update_temp()
 
-            if not f1.has_read_permission(user): continue
+            if not (await f1.has_read_permission(user)): continue
 
             yield f1
 
-    def _find(self, query, pipe0=[], pipe1=[]):
+    async def _find(self, query, pipe0=[], pipe1=[]):
 
         pipe = [
             {'$match': query},
             ]
         pipe = pipe0 + pipe + pipe1
 
-        c = self.coll.files.aggregate(pipe)
+        with elephant.util.stopwatch(logger_mongo.info, "aggregate "):
+            c = self.coll.files.aggregate(pipe, allowDiskUse=True)
 
         for d in c:
-            yield self._factory(d)
+            d1 = await self._factory(d)
+
+            yield d1
 
     async def find(self, user, query, pipe0=[], pipe1=[]):
         
-        pipe = pipe0 + [{'$match': query}] + pipe1
+        async for d in self._find(query, pipe0, pipe1):
 
-        logger.debug('pipe:')
-        for _ in pipe:
-            logger.debug(_)
+            if await d.has_read_permission(user):
+                yield d
+            else:
+                logger.warning(crayons.yellow(f'permission denied for {d.d.get("title", None)}'))
 
-        with elephant.util.stopwatch(logger_mongo.info, "aggregate "):
-            c = self.coll.files.aggregate(pipe)
-
-        for d in c:
-            d1 = self._factory(d)
-            if d1.has_read_permission(user):
-                yield d1
-
-    def aggregate(self, user, pipeline_generator):
+    async def aggregate(self, user, pipeline_generator):
 
         pipe = list(pipeline_generator())
 
-        c = self.coll.files.aggregate(pipe)
+        c = self.coll.files.aggregate(pipe, allowDiskUse=True)
         
         for d in c:
             d1 = self._factory(d)
-            if d1.has_read_permission(user):
+            if await d1.has_read_permission(user):
                 yield d1
       
 
