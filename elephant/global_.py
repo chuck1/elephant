@@ -57,9 +57,16 @@ class File(elephant.file.File):
 
     async def update_temp(self, user):
         """
-        update self.d["_temp"] with calculated values to be stored in the database for querying
-        """
+        recalculate _temp fields
+        _temp fields store data in the database for querying
+        this should be done before a document is written, not when it is read.
 
+        fields:
+          first_commit
+        """
+	
+        self.d["_temp"] = {}
+ 
         await self.temp_commits()
 
     def _commits_1(self):
@@ -81,14 +88,16 @@ class File(elephant.file.File):
                 {'$match': {'$expr': {'$eq': ["$files1.file_id", self.d["_id"]]}}},
                 {'$project': {'files1': 0}},
                 ]
+ 
+        commits = list(self.e.coll.commits.aggregate(pipe))
 
-        if not "_temp" in self.d: self.d["_temp"] = {}
-  
-        self.d["_temp"]["commits"] = list(self.e.coll.commits.aggregate(pipe))
+        #self.d["_temp"]["commits"] = 
 
-        self.d["_temp"]["last_commit"]  = self.d['_temp']['commits'][-1]
+        #self.d["_temp"]["last_commit"]  = self.d['_temp']['commits'][-1]
 
-        self.d["_temp"]["first_commit"] = self.d["_temp"]["commits"][ 0]
+        self.d["_temp"]["first_commit"] = commits[0]
+
+        del commits
 
     async def delete(self):
         self.e.coll.files.delete_one({'_id': self.d["_id"]})
@@ -162,7 +171,12 @@ class File(elephant.file.File):
         logger.info(f"user = {user}")
         return False
 
-    async def creator(self):
+    async def creator_id(self):
+
+        if "_temp" in self.d:
+            if "first_commit" in self.d["_temp"]:
+                return self.d["_temp"]["first_commit"]["user"]
+
         commits = self.commits1()
 
         try:
@@ -180,6 +194,9 @@ class File(elephant.file.File):
             #{'$set': {'user': commit0['user']}})
 
         user_id = commit0['user']
+
+    async def creator(self):
+        user_id = await self.creator_id()
         user = await self.e.h.e_users._find_one("master", {"_id": user_id})
         return user
  
@@ -291,7 +308,7 @@ class Engine:
             return o.d['_id'], o
  
     async def check(self):
-        logger.info(f'check collection {self.coll.name}')
+        logger.warning(f'check collection {self.coll.name}')
 
         # delete test docs
         res = self.coll.files.delete_many({'test_field': {'$exists': True}})
@@ -396,9 +413,9 @@ class Engine:
 
         f = await self._find_one_by_id(file_id)
 
-        item0 = dict(f.d)
+        doc_old_0 = dict(f.d)
 
-        item1 = aardvark.util.clean(item0)
+        item1 = aardvark.util.clean(doc_old_0)
 
         diffs = list(aardvark.diff(item1, doc_new_1))
 
@@ -407,7 +424,19 @@ class Engine:
         await f.update_temp(user)
 
         if not diffs:
-            if item0.get("temp", {}) != f.d["_temp"]:
+            diffs_temp = list(aardvark.diff(doc_old_0.get("_temp", {}), f.d["_temp"]))
+
+         
+            if diffs_temp:
+                logger.info("temp old:")
+                #pprint.pprint(doc_old_0.get("_temp", {}))
+                logger.info("temp new:")
+                #pprint.pprint(f.d["_temp"])
+                logger.info("diffs_temp:")
+                for diff in diffs_temp:
+                    logger.info(f'  {repr(diff.address)[:100]}')
+                    logger.info(f'    {repr(diff)[:100]}')
+
                 update = {'$set': {}}
                 update['$set']['_temp'] = f.d["_temp"]
                 res = self.coll.files.update_one({'_id': file_id}, update)
@@ -456,21 +485,16 @@ class Engine:
         except StopIteration:
             return None
 
-        commits = list(self.coll.commits.find({"files.file_id": d['_id']}))
-        
-        if not commits:
-            pprint.pprint(d)
-            raise Exception()
-
-        if "_temp" not in d:
-            d["_temp"] = {}
-
-        d["_temp"]["commits"] = commits
-
-
         d1 = await self._factory(d)
 
         assert d1 is not None
+
+        try:
+            await d1.check()
+        except Exception as e:
+            logging.error(crayons.red(f"{self!r}: check failed for {d!r}: {e!r}"))
+            await d1.update_temp(self.h.root_user)
+            await d1.check()
 
         return d1
 
