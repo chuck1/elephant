@@ -291,7 +291,7 @@ class Engine:
             return o.d['_id'], o
  
     async def check(self):
-        logger.info(f'check collection {self.coll.name}')
+        logger.warning(f'check collection {self.coll.name}')
 
         # delete test docs
         res = self.coll.files.delete_many({'test_field': {'$exists': True}})
