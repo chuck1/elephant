@@ -47,7 +47,17 @@ class File(elephant.file.File):
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
                 return True
-        return user.d["_id"] == self.creator()
+
+        user0 = user.d["_id"]
+        user1 = self.creator()
+
+        if user0 == user1:
+            logger.info(f"Permission granted: {user0} == {user1}")
+            return True
+        else:
+            logger.info(f"Permission denied:  {user0} != {user1}")
+            return False
+
 
     async def has_write_permission(self, user):
         if hasattr(self.e, 'h'):
@@ -103,7 +113,10 @@ class File(elephant.file.File):
                 print(res.modified_count)
 
     def creator(self):
-        if self.d.get('_root'): return None
+        if self.d.get('_root'):
+            logger.info("has field _root!")
+            pprint.pprint(self.d)
+            return None
 
         self._assert_elephant()
 
@@ -155,8 +168,10 @@ class File(elephant.file.File):
                 raise Exception()
                 self.update_temp(user)
                 self.put('master', None)
-
-        return commit0['user']
+ 
+        user = commit0['user']
+        assert user is not None
+        return user
  
     def put(self, ref, user):
         return self.e.put(ref, self.d["_id"], self.d, user)
@@ -183,6 +198,28 @@ class File(elephant.file.File):
     async def temp_messages(self):
         return
         yield
+
+    async def checkout(self, user, ref):
+
+        path = await self.e.get_path(ref)
+
+        a = await self.e.apply_path(path, {})
+
+        a['_id'] = self.d['_id']
+        
+
+        a['_elephant'] = {
+                'ref': ref,
+
+                # we are not changing the definition of any of our refs
+                # we are just changing this document to reflect a particular commit
+                'refs': self.d['_elephant']['refs'],
+                }
+        
+
+        self.d = a
+
+        await self.update_temp(user)
 
 class Engine:
     """
@@ -243,6 +280,15 @@ class Engine:
     async def create_indices(self):
         pass
 
+    async def get_test_document(self):
+        b = {"test_field": str(time.time())}
+        return b
+
+    async def get_test_object(self, user):
+        b = await self.get_test_document()
+        o = await self.put(user, "master", None, b)
+        return o
+
     async def check(self):
         logger.info(f'check collection {self.coll.name}')
 
@@ -297,11 +343,11 @@ class Engine:
         diffs_array = [d.to_array() for d in diffs]
         
         commit = {
-                'file': file_id,
-                'parent': parent,
+                'file':    file_id,
+                'parent':  parent,
                 'changes': diffs_array,
-                'time': datetime.datetime.utcnow(),
-                'user': user.d["_id"],
+                'time':    datetime.datetime.utcnow(),
+                'user':    user.d["_id"],
                 }
  
         res = self.coll.commits.insert_one(commit)
@@ -312,6 +358,8 @@ class Engine:
         diffs = list(aardvark.diff({}, item))
 
         commit_id = self._create_commit(None, None, diffs, user)
+
+        logger.info(f"new document commit: {commit_id}")
 
         item1 = aardvark.util.clean(item)
 
@@ -338,12 +386,20 @@ class Engine:
         if _id is None:
             return await self._put_new(ref, doc_new_0, user)
 
-        doc_old_0 = self.coll.files.find_one({'_id': _id})
+        doc_old_0 = await self.find_one_by_id(user, ref, _id)
 
-        doc_old_1 = aardvark.util.clean(doc_old_0)
+        # check permissions
+        # TODO use query to do this
+ 
+        if not (await doc_old_0.has_write_permission(user)):
+            raise otter.AccessDenied()
+
+        # calculate diff
+  
+        doc_old_1 = aardvark.util.clean(doc_old_0.d)
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
-        el0 = doc_old_0['_elephant']
+        el0 = doc_old_0.d['_elephant']
         el1 = dict(el0)
 
         assert ref == el0['ref']
@@ -354,28 +410,39 @@ class Engine:
         for d in diffs:
             logger.debug(repr(d))
 
-        if not diffs:
-            d = await self._factory(doc_new_0)
-            await d.update_temp(user)
+        # update the old document object
 
-            if doc_old_0.get("_temp", {}) != d.d.get("_temp", {}):
-                logger.info('update temp')
-                update = {'$set': {}}
-                update['$set']['_temp'] = d.d["_temp"]
+        aardvark.apply(doc_old_0.d, diffs)
+
+        # update temp
+
+        temp_old = dict(doc_old_0.d.get("_temp", {}))
+
+        await doc_old_0.update_temp(user)
+
+        if not diffs:
+            logger.info("diffs is empty")
+
+            if doc_old_0.d.get("_temp", {}) != temp_old:
+                logger.info('document unchanged but temp change')
+                update = {'$set': {"_temp": doc_old_0.d["_temp"]}}
                 res = self.coll.files.update_one({'_id': _id}, update)
             
-            return
+            return doc_old_0
+
+
+        # create commit
 
         parent = el0['refs'][ref]
- 
-        d = await self.get_content('master', user, {'_id': _id})
-
-        if not (await d.has_write_permission(user)):
-            raise otter.AccessDenied()
-
         commit_id = self._create_commit(_id, parent, diffs, user)
+
+        # point ref to new commit id
         
         el1['refs'][ref] = commit_id
+
+        logger.info(f"{ref}: {parent} -> {commit_id}")
+
+        # update database
 
         update = aardvark.util.diffs_to_update(diffs, doc_new_1)
         
@@ -385,14 +452,15 @@ class Engine:
         update['$set']['_elephant'] = el1
 
         res = self.coll.files.update_one({'_id': _id}, update)
+        assert res.modified_count == 1
 
-        return res
+        # update the document object
 
-    def _find_one(self, ref, q):
-        return self.get_content(ref, None, q)
+        aardvark.apply(doc_old_0.d, diffs)
+ 
+        doc_old_0.d["_elephant"] = el1
 
-    async def find_one(self, user, ref, q):
-        return await self.get_content(ref, user, q)
+        return doc_old_0
 
     def _assert_elephant(self, f, f0):
         if '_elephant' not in f:
@@ -424,6 +492,7 @@ class Engine:
   
         path = [c_0]
 
+        # move backward in time to first commit
         while True:
             if path[-1]["parent"] is None: break
             c = self.coll.commits.find_one({"_id": path[-1]["parent"]})
@@ -445,25 +514,43 @@ class Engine:
 
         return a
 
-    async def get_content(self, ref, user, filt):
+    async def find_one_by_id(self, user, ref, _id):
+        return await self.find_one(user, ref, {"_id": _id})
+
+    async def find_one(self, user, ref, q):
+        d = await self._find_one(ref, q)
+
+        if d is None: return 
+
+        if not d.has_read_permission(user):
+            raise Exception("Access Denied")
+
+        return d
+
+    async def _find_one(self, ref, filt):
 
         f = self.coll.files.find_one(filt)
 
         if f is None: return None
 
         f0 = await self._factory(f)
-
+ 
+        # TODO do we really need this?
         if f.get('_root', False): return f0
 
         self._assert_elephant(f, f0)
         
-        if ref == f['_elephant']['ref']:
-            pass
-        elif ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]:
-            pass
+        if (ref == f['_elephant']['ref']) or (ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]):
+            
+            #commits = list(self.coll.commits.find({"file": f["_id"]}))
+            #f["_temp"] = {}
+            #f["_temp"]["commits"] = commits
+    
+            return f0
+
         else:
             
-            await f0.update_temp(user)
+            #await f0.update_temp(user)
 
             print('commits')
             for c in f0.d['_temp']['commits']:
@@ -487,51 +574,15 @@ class Engine:
             a['_elephant']['refs'] = f['_elephant']['refs']
 
             f2 = await self._factory(a)
-
-            await f2.update_temp(user)
-
+  
             return f2
 
-
-        commits = list(self.coll.commits.find({"file": f["_id"]}))
-        
-        f["_temp"] = {}
-
-        f["_temp"]["commits"] = commits
-
-        f1 = await self._factory(f)
-
-        if f1 is not None:
-            await f1.update_temp(user)
-
-        return f1
-
-    async def _find(self, q={}):
-        for d in self.coll.files.find(q):
-            yield await self._factory(d)
-
-    def _pipe_commits(self):
-
-        # commits
-        yield {'$lookup': {
-                'from': self.coll.name + '.commits',
-                'let': {'file_id': '$_id'},
-                'pipeline': [
-                    {'$match': {'$expr': {'$eq': ["$file","$$file_id"]}}},
-                    ],
-                'as': "_temp.commits",
-                }}
-
-        yield {'$addFields': {
-                '_temp.last_commit': {'$arrayElemAt': ['$_temp.commits', -1]},
-                '_temp.first_commit': {'$arrayElemAt': ['$_temp.commits', 0]},
-        }}
-
     def pipe0(self, user):
-        yield from self._pipe_commits()
+        return 
+        yield
 
-    async def find(self, user, query, pipe0=[], pipe1=[]):
-        
+    async def _find(self, query, pipe0=[], pipe1=[]):
+
         pipe = pipe0 + [{'$match': query}] + pipe1
 
         logger.debug('local find pipeline')
@@ -542,15 +593,15 @@ class Engine:
             c = self.coll.files.aggregate(pipe)
 
         for d in c:
-            logger.debug(repr(d))
-            d1 = await self._factory(d)
-            await d1.update_temp(user)
 
-            if "_temp" not in d1.d: breakpoint()
-            if "commits" not in d1.d["_temp"]: breakpoint()
+            yield await self._factory(d)
 
-            if d1.has_read_permission(user):
-                yield d1
+    async def find(self, user, query, pipe0=[], pipe1=[]):
+
+        async for d in self._find(query, pipe0, pipe1):
+
+            if d.has_read_permission(user):
+                yield d
 
 
 

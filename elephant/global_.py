@@ -272,6 +272,15 @@ class Engine:
         self.ref_name = ref_name
         self._cache = {}
 
+    async def get_test_document(self):
+        b = {"test_field": str(time.time())}
+        return b
+
+    async def get_test_object(self, user):
+        b = await self.get_test_document()
+        o = await self.put(user, None, b)
+        return o
+
     async def create_indices(self):
         pass
 
