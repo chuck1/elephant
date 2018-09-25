@@ -40,7 +40,7 @@ class File(elephant.file.File):
     def valid(self):
         pass
 
-    def check(self):
+    async def check(self):
         self.creator()
 
     def has_read_permission(self, user):
