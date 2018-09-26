@@ -336,7 +336,7 @@ class Engine:
             assert isinstance(c['time'], datetime.datetime)
 
     async def _factory(self, d):
-        return File(self, d)
+        return self.__doc_class(self, await self.h.decode(d))
 
     def _commit_path(self, c0, c1):
 

@@ -290,7 +290,6 @@ class Engine:
 
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
-
     def _pipe_read_permission(self, user):
         
         yield {'$match': {'_temp.first_commit.user': user.d["_id"]}}
@@ -307,8 +306,8 @@ class Engine:
             yield {'$sort': bson.son.SON(sort)}
 
     async def _factory(self, d):
-        return File(self, d)
-   
+        return self._doc_class(self, await self.h.decode(d))
+
     async def object_or_id(self, o):
 
         if isinstance(o, bson.objectid.ObjectId):
