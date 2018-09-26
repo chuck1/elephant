@@ -1,3 +1,4 @@
+import copy
 import json
 import time
 import hashlib
@@ -12,10 +13,32 @@ import networkx as nx
 
 import elephant.util
 import elephant.file
-import elephant.encode
 
 logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
+
+def countup():
+    i = 0
+    while True:
+        yield i
+        i += 1
+
+def check_encode(o, address=[]):
+    if isinstance(o, dict):
+        for k, v in o.items():
+            check_encode(v, address + [k])
+    elif isinstance(o, (list, tuple)):
+        for k, v in zip(countup(), o):
+            check_encode(v, address + [k])
+    else:
+        try:
+            bson.json_util.dumps(o)
+        except Exception as e:
+            print("bson encode failed")
+            print(repr(o))
+            print(address)
+            raise
+            
 
 class _User:
     def __init__(self):
@@ -173,8 +196,8 @@ class File(elephant.file.File):
         assert user is not None
         return user
  
-    def put(self, ref, user):
-        return self.e.put(ref, self.d["_id"], self.d, user)
+    def put(self, user):
+        return self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
 
     #def commits(self):
     #    return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
@@ -379,7 +402,7 @@ class Engine:
 
     async def put(self, user, ref, _id, doc_new_0):
 
-        doc_new_0 = elephant.encode.encode(doc_new_0)
+        doc_new_0 = await elephant.util.encode(doc_new_0)
 
         assert isinstance(doc_new_0, dict)
 
@@ -412,6 +435,9 @@ class Engine:
 
         # update the old document object
 
+        pprint.pprint(doc_old_0.d)
+        copy.deepcopy(doc_old_0.d)
+
         aardvark.apply(doc_old_0.d, diffs)
 
         # update temp
@@ -425,7 +451,7 @@ class Engine:
 
             if doc_old_0.d.get("_temp", {}) != temp_old:
                 logger.info('document unchanged but temp change')
-                update = {'$set': {"_temp": doc_old_0.d["_temp"]}}
+                update = {'$set': {"_temp": await doc_old_0.temp_to_array()}}
                 res = self.coll.files.update_one({'_id': _id}, update)
             
             return doc_old_0
@@ -451,13 +477,18 @@ class Engine:
 
         update['$set']['_elephant'] = el1
 
+        update['$set']['_temp'] = await elephant.util.encode(doc_old_0.d["_temp"])
+
+        check_encode(update)
+
+        pprint.pprint(update)
+
         res = self.coll.files.update_one({'_id': _id}, update)
+
         assert res.modified_count == 1
 
         # update the document object
 
-        aardvark.apply(doc_old_0.d, diffs)
- 
         doc_old_0.d["_elephant"] = el1
 
         return doc_old_0

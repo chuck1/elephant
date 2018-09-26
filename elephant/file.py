@@ -28,9 +28,6 @@ class _AArray:
         else:
             return default
 
-    def to_array(self):
-        return self.d
-
 class File:
     def __init__(self, e, d):
         self.e = e
@@ -84,11 +81,8 @@ class File:
     def commits(self, ref = None):
         return reversed(list(self._commits(ref)))
 
-    async def to_array(self):
-        return dict(self.d)
-
     async def temp_to_array(self):
-        return dict(self.d['_temp'])
+        return await elephant.util.encode(dict(self.d['_temp']))
 
     def list_connected(self, user, query=None):
         yield from self.list_upstream(user, query)
@@ -102,3 +96,7 @@ class File:
         yield
         return
  
+    async def __encode__(self):
+        return {'Document': await elephant.util.encode(dict(self.d))}
+
+
