@@ -21,10 +21,11 @@ logger_mongo = logging.getLogger(__name__ + "-mongo")
 class Temp: pass
 
 class File(elephant.file.File):
-    def __init__(self, e, d):
+    def __init__(self, e, d, _d):
         assert isinstance(d, dict)
         self.e = e
         self.d = d
+        self._d = _d
         self.temp = Temp()
 
     def freeze(self):
@@ -306,7 +307,7 @@ class Engine:
             yield {'$sort': bson.son.SON(sort)}
 
     async def _factory(self, d):
-        return self._doc_class(self, await self.h.decode(d))
+        return self._doc_class(self, await self.h.decode(d), d)
 
     async def object_or_id(self, o):
 

@@ -11,42 +11,22 @@ import logging
 
 import networkx as nx
 
+import elephant.check
 import elephant.util
 import elephant.file
 
 logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
 
-def countup():
-    i = 0
-    while True:
-        yield i
-        i += 1
-
-def check_encode(o, address=[]):
-    if isinstance(o, dict):
-        for k, v in o.items():
-            check_encode(v, address + [k])
-    elif isinstance(o, (list, tuple)):
-        for k, v in zip(countup(), o):
-            check_encode(v, address + [k])
-    else:
-        try:
-            bson.json_util.dumps(o)
-        except Exception as e:
-            print("bson encode failed")
-            print(repr(o))
-            print(address)
-            raise
-            
+           
 
 class _User:
     def __init__(self):
         self.d = {}
 
 class File(elephant.file.File):
-    def __init__(self, e, d):
-        super(File, self).__init__(e, d)
+    def __init__(self, e, d, _d):
+        super(File, self).__init__(e, d, _d)
 
     def freeze(self):
         if isinstance(self.d['_elephant']['ref'], bson.objectid.ObjectId):
@@ -64,17 +44,17 @@ class File(elephant.file.File):
         pass
 
     async def check(self):
-        self.creator()
+        assert await self.creator()
 
-    def has_read_permission(self, user):
+    async def has_read_permission(self, user):
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
                 return True
 
-        user0 = user.d["_id"]
-        user1 = self.creator()
+        user0 = user
+        user1 = await self.creator()
 
-        if user0 == user1:
+        if user0.freeze() == user1.freeze():
             logger.info(f"Permission granted: {user0} == {user1}")
             return True
         else:
@@ -86,7 +66,7 @@ class File(elephant.file.File):
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
                 return True
-        return user.d["_id"] == self.creator()
+        return user.freeze() == (await self.creator()).freeze()
 
     def commit0(self):
         if self.d.get('_root', False): return
@@ -135,7 +115,7 @@ class File(elephant.file.File):
     
                 print(res.modified_count)
 
-    def creator(self):
+    async def creator(self):
         if self.d.get('_root'):
             logger.info("has field _root!")
             pprint.pprint(self.d)
@@ -194,7 +174,7 @@ class File(elephant.file.File):
  
         user = commit0['user']
         assert user is not None
-        return user
+        return await self.e.h.e_users._find_one_by_id("master", user)
  
     def put(self, user):
         return self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
@@ -336,7 +316,7 @@ class Engine:
             assert isinstance(c['time'], datetime.datetime)
 
     async def _factory(self, d):
-        return self.__doc_class(self, await self.h.decode(d))
+        return self._doc_class(self, await self.h.decode(d), d)
 
     def _commit_path(self, c0, c1):
 
@@ -365,6 +345,8 @@ class Engine:
     def _create_commit(self, file_id, parent, diffs, user):
         diffs_array = [d.to_array() for d in diffs]
         
+        elephant.check.check(diffs_array, bson.json_util.dumps)
+
         commit = {
                 'file':    file_id,
                 'parent':  parent,
@@ -418,9 +400,12 @@ class Engine:
             raise otter.AccessDenied()
 
         # calculate diff
+        # for doc_0, use _d which is the undecoded data
+        # for doc_1, encode the data
+        # this way we are compaing what will be stored in the DB
   
-        doc_old_1 = aardvark.util.clean(doc_old_0.d)
-        doc_new_1 = aardvark.util.clean(doc_new_0)
+        doc_old_1 = aardvark.util.clean(doc_old_0._d)
+        doc_new_1 = await elephant.util.encode(aardvark.util.clean(doc_new_0))
 
         el0 = doc_old_0.d['_elephant']
         el1 = dict(el0)
@@ -435,10 +420,18 @@ class Engine:
 
         # update the old document object
 
-        pprint.pprint(doc_old_0.d)
-        copy.deepcopy(doc_old_0.d)
+        _ = aardvark.util.clean(doc_old_0.d)
 
-        aardvark.apply(doc_old_0.d, diffs)
+        try:
+            elephant.check.check(_, copy.deepcopy)
+            copy.deepcopy(_)
+        except:
+            pprint.pprint(_)
+            raise
+
+        aardvark.apply(_, diffs)
+
+        doc_old_0.d.update(_)
 
         # update temp
 
@@ -479,7 +472,7 @@ class Engine:
 
         update['$set']['_temp'] = await elephant.util.encode(doc_old_0.d["_temp"])
 
-        check_encode(update)
+        elephant.check.check(update, bson.json_util.dumps)
 
         pprint.pprint(update)
 
@@ -545,6 +538,9 @@ class Engine:
 
         return a
 
+    async def _find_one_by_id(self, ref, _id):
+        return await self._find_one(ref, {"_id": _id})
+
     async def find_one_by_id(self, user, ref, _id):
         return await self.find_one(user, ref, {"_id": _id})
 
@@ -553,12 +549,12 @@ class Engine:
 
         if d is None: return 
 
-        if not d.has_read_permission(user):
+        if not await d.has_read_permission(user):
             raise Exception("Access Denied")
 
         return d
 
-    async def _find_one(self, ref, filt):
+    async def _find_one(self, ref, filt={}):
 
         f = self.coll.files.find_one(filt)
 
@@ -612,7 +608,7 @@ class Engine:
         return 
         yield
 
-    async def _find(self, query, pipe0=[], pipe1=[]):
+    async def _find(self, query={}, pipe0=[], pipe1=[]):
 
         pipe = pipe0 + [{'$match': query}] + pipe1
 
@@ -631,7 +627,7 @@ class Engine:
 
         async for d in self._find(query, pipe0, pipe1):
 
-            if d.has_read_permission(user):
+            if await d.has_read_permission(user):
                 yield d
 
 

@@ -29,9 +29,10 @@ class _AArray:
             return default
 
 class File:
-    def __init__(self, e, d):
+    def __init__(self, e, d, _d):
         self.e = e
         self.d = d
+        self._d = _d
 
     def get(self, k, default):
         if k in self.d:
