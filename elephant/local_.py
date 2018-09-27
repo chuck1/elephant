@@ -29,6 +29,8 @@ class File(elephant.file.File):
         super(File, self).__init__(e, d, _d)
 
     def freeze(self):
+        if '_root' in self.d: return
+
         if isinstance(self.d['_elephant']['ref'], bson.objectid.ObjectId):
             return {
                 'id': self.d['_id'],
@@ -46,13 +48,23 @@ class File(elephant.file.File):
     async def check(self):
         assert await self.creator()
 
-    async def has_read_permission(self, user):
+    async def has_read_permission(self, user0):
+        if '_root' in self.d: 
+            logger.info(f'Permission denied: root document')
+            return False
+
         if hasattr(self.e, 'h'):
-            if user == self.e.h.root_user:
+            if user0 == self.e.h.root_user:
                 return True
 
-        user0 = user
+        if user0 is None: 
+            logger.info(f'Permission denied: user0 is None')
+            return False
+
         user1 = await self.creator()
+
+        assert user1
+
 
         if user0.freeze() == user1.freeze():
             logger.info(f"Permission granted: {user0} == {user1}")
@@ -129,8 +141,11 @@ class File(elephant.file.File):
         my_user = _User()
         my_user.d['_id'] = my_id
 
+        commit0 = next(commits)
+ 
+        # TODO move this to a migration
         try:
-            commit0 = next(commits)
+            pass
         except StopIteration:
             print(crayons.red('no commits'))
 
