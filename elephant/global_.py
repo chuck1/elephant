@@ -273,12 +273,13 @@ class Engine:
         self.ref_name = ref_name
         self._cache = {}
 
-    async def get_test_document(self):
+    async def get_test_document(self, b0={}):
         b = {"test_field": str(time.time())}
+        b.update(b0)
         return b
 
-    async def get_test_object(self, user):
-        b = await self.get_test_document()
+    async def get_test_object(self, user, b0={}):
+        b = await self.get_test_document(b0)
         o = await self.put(user, None, b)
         return o
 
