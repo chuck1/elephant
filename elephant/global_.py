@@ -411,7 +411,10 @@ class Engine:
 
         file_id = res.inserted_id
 
-        diffs = list(aardvark.diff({}, doc_new_1))
+        diffs = list(aardvark.diff(
+                {}, 
+                await elephant.util.encode(doc_new_1),
+                ))
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
 
@@ -433,7 +436,7 @@ class Engine:
 
     async def put(self, user, file_id, doc_new_0):
 
-        doc_new_0 = await elephant.util.encode(doc_new_0)
+        #doc_new_0 = await elephant.util.encode(doc_new_0)
 
         if file_id is None:
             return await self.put_new(user, doc_new_0)
@@ -447,13 +450,19 @@ class Engine:
         # get existing document
         f = await self._find_one_by_id(file_id)
 
-        doc_old_0 = dict(f.d)
+        doc_old_0 = copy.deepcopy(f.d)
 
         item1 = aardvark.util.clean(doc_old_0)
 
-        diffs = list(aardvark.diff(item1, doc_new_1))
+        doc_new_encoded = await elephant.util.encode(doc_new_1)
 
-        aardvark.apply(f.d, diffs)
+        diffs = list(aardvark.diff(
+                await elephant.util.encode(item1),
+                doc_new_encoded,
+                ))
+
+        f.d.update(doc_new_1)
+        #aardvark.apply(f.d, diffs)
 
         await f.update_temp(user)
 
@@ -482,7 +491,7 @@ class Engine:
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
         
-        update = aardvark.util.diffs_to_update(diffs, doc_new_0)
+        update = aardvark.util.diffs_to_update(diffs, doc_new_encoded)
 
         if '$set' not in update:
             update['$set'] = {}
