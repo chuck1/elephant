@@ -6,10 +6,12 @@ import datetime
 import json
 import time
 import hashlib
-import bson
 import logging
 import time
+
+import bson
 import crayons
+
 import aardvark
 import aardvark.util
 import elephant.util
@@ -45,6 +47,9 @@ class File(elephant.file.File):
         self.e.coll.files.update_one({'_id': self.d['_id']}, updates)
 
     def valid(self):
+        pass
+
+    async def check_0(self):
         pass
 
     async def check(self):
@@ -317,6 +322,10 @@ class Engine:
         else:
             return o.d['_id'], o
  
+    async def check_0(self):
+        # checks that do not require an _id
+        pass
+
     async def check(self):
         logger.warning(f'check collection {self.coll.name}')
 
@@ -389,6 +398,10 @@ class Engine:
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
+        # check before any database operations
+        f0 = await self._factory(copy.deepcopy(doc_new_1))
+        await f0.check_0()
+
         # need file id to create commit
         res = self.coll.files.insert_one(copy.copy(doc_new_1))
 
@@ -416,11 +429,18 @@ class Engine:
 
     async def put(self, user, file_id, doc_new_0):
 
+        doc_new_0 = await elephant.util.encode(doc_new_0)
+
         if file_id is None:
             return await self.put_new(user, doc_new_0)
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
+        # check before any database operations
+        f0 = await self._factory(copy.deepcopy(doc_new_1))
+        await f0.check_0()
+
+        # get existing document
         f = await self._find_one_by_id(file_id)
 
         doc_old_0 = dict(f.d)
