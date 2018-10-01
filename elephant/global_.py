@@ -407,7 +407,9 @@ class Engine:
         await f0.check_0()
 
         # need file id to create commit
-        res = self.coll.files.insert_one(copy.copy(doc_new_1))
+        doc_new_encoded = await elephant.util.encode(doc_new_1)
+
+        res = self.coll.files.insert_one(doc_new_encoded)
 
         file_id = res.inserted_id
 
