@@ -278,6 +278,8 @@ class Engine:
         self.ref_name = ref_name
         self._cache = {}
 
+    async def pre_put_new(self, _): return _
+
     async def get_test_document(self, b0={}):
         b = {"test_field": str(time.time())}
         b.update(b0)
@@ -395,6 +397,8 @@ class Engine:
         return commit
 
     async def put_new(self, user, doc_new_0):
+
+        doc_new_0 = await self.pre_put_new(doc_new_0)
 
         doc_new_1 = aardvark.util.clean(doc_new_0)
 
