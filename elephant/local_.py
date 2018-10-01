@@ -595,9 +595,9 @@ class Engine:
             
             #await f0.update_temp(user)
 
-            print('commits')
-            for c in f0.d['_temp']['commits']:
-                print(f'  {c}')
+            #print('commits')
+            #for c in f0.d['_temp']['commits']:
+            #    print(f'  {c}')
 
             c_id_1 = f["_elephant"]["refs"][f["_elephant"]["ref"]]
 
