@@ -78,13 +78,8 @@ class Engine:
     async def create_indices(self):
         pass
 
-    async def get_test_document(self, b0={}):
-        b = {"test_field": str(time.time())}
-        b.update(b0)
-        return b
-
     async def get_test_object(self, user, b0={}):
-        b = await self.get_test_document(b0)
+        b = await self._doc_class.get_test_document(b0)
         o = await self.put(user, "master", None, b)
         return o
 
@@ -155,28 +150,36 @@ class Engine:
 
         return res.inserted_id
 
-    async def _put_new(self, ref, item, user):
-        diffs = list(aardvark.diff({}, item))
+    async def _put_new(self, user, ref, doc_new_0):
+
+        #doc_new_0 = await self.pre_put_new(doc_new_0)
+
+        doc_new_1 = aardvark.util.clean(doc_new_0)
+
+        # check before any database operations
+        f0 = await self._factory(copy.deepcopy(doc_new_1))
+        await f0.check_0()
+
+        # calculate diffs
+        diffs = list(aardvark.diff({}, doc_new_0))
 
         commit_id = self._create_commit(None, None, diffs, user)
 
         logger.info(f"new document commit: {commit_id}")
 
-        item1 = aardvark.util.clean(item)
-
-        item1['_elephant'] = {
+        doc_new_1['_elephant'] = {
                 "ref": ref,
                 "refs": {ref: commit_id},
                 }
 
-        res = self.coll.files.insert_one(item1)
+        res = self.coll.files.insert_one(doc_new_1)
 
         self.coll.commits.update_one(
                 {"_id": commit_id}, {"$set": {"file": res.inserted_id}})
 
-        item1['_id'] = res.inserted_id
+        doc_new_1['_id'] = res.inserted_id
 
-        return await self._factory(item1)
+        return await self._factory(doc_new_1)
 
     async def put(self, user, ref, _id, doc_new_0):
 
@@ -185,7 +188,7 @@ class Engine:
         assert isinstance(doc_new_0, dict)
 
         if _id is None:
-            return await self._put_new(ref, doc_new_0, user)
+            return await self._put_new(user, ref, doc_new_0)
 
         doc_old_0 = await self.find_one_by_id(user, ref, _id)
 

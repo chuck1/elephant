@@ -30,6 +30,12 @@ class File(elephant.doc.Doc):
         self._d = _d
         self.temp = Temp()
 
+    @classmethod
+    async def get_test_document(cls, b0={}):
+        b = {"test_field": str(time.time())}
+        b.update(b0)
+        return b
+
     def freeze(self):
         return self.d["_id"]
 
@@ -280,13 +286,8 @@ class Engine:
 
     async def pre_put_new(self, _): return _
 
-    async def get_test_document(self, b0={}):
-        b = {"test_field": str(time.time())}
-        b.update(b0)
-        return b
-
     async def get_test_object(self, user, b0={}):
-        b = await self.get_test_document(b0)
+        b = await self._doc_class.get_test_document(b0)
         o = await self.put(user, None, b)
         return o
 
@@ -324,10 +325,6 @@ class Engine:
         else:
             return o.d['_id'], o
  
-    async def check_0(self):
-        # checks that do not require an _id
-        pass
-
     async def check(self):
         logger.warning(f'check collection {self.coll.name}')
 

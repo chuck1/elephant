@@ -41,7 +41,17 @@ class Doc(elephant.doc.Doc):
                 'ref': self.d['_elephant']['refs'][self.d['_elephant']['ref']],
                 }
 
+    @classmethod
+    async def get_test_document(cls, b0={}):
+        b = {"test_field": str(time.time())}
+        b.update(b0)
+        return b
+
     def valid(self):
+        pass
+
+    async def check_0(self):
+        # checks before _id is available
         pass
 
     async def check(self):
@@ -240,10 +250,20 @@ class Doc(elephant.doc.Doc):
 
 class Query(Doc):
 
+    async def check_0(self):
+        await super().check_0()
+        assert "title" in self.d
+        assert "query0" in self.d
+
     async def check(self):
         await super().check()
         assert "title" in self.d
         assert "query0" in self.d
 
+    @classmethod
+    async def get_test_document(self, b0={}):
+        b1 = {"title": "test", "query0": "{}"}
+        b1.update(b0)
+        return await super().get_test_document(b1)
 
 
