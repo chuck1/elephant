@@ -151,46 +151,69 @@ class Engine:
         return res.inserted_id
 
     async def _put_new(self, user, ref, doc_new_0):
+        assert isinstance(doc_new_0, dict)
 
         #doc_new_0 = await self.pre_put_new(doc_new_0)
 
-        doc_new_1 = aardvark.util.clean(doc_new_0)
+        doc_new_0 = aardvark.util.clean(doc_new_0)
 
         # check before any database operations
-        f0 = await self._factory(copy.deepcopy(doc_new_1))
+        f0 = await self._factory(copy.deepcopy(doc_new_0))
         await f0.check_0()
 
+        doc_new_encoded = await elephant.util.encode(doc_new_0)
+
         # calculate diffs
-        diffs = list(aardvark.diff({}, doc_new_0))
+        diffs = list(aardvark.diff({}, doc_new_encoded))
 
         commit_id = self._create_commit(None, None, diffs, user)
 
         logger.info(f"new document commit: {commit_id}")
 
-        doc_new_1['_elephant'] = {
+        el = {
                 "ref": ref,
                 "refs": {ref: commit_id},
                 }
 
-        res = self.coll.files.insert_one(doc_new_1)
+        doc_new_0['_elephant'] = el
+
+        doc_new_encoded["_elephant"] = el
+
+        # insert into database
+
+        res = self.coll.files.insert_one(doc_new_encoded)
+
+        # update the commit in the database with the inserted id
 
         self.coll.commits.update_one(
                 {"_id": commit_id}, {"$set": {"file": res.inserted_id}})
 
-        doc_new_1['_id'] = res.inserted_id
+        doc_new_0['_id'] = res.inserted_id
 
-        return await self._factory(doc_new_1)
+        o = await self._factory(doc_new_0)
+   
+        await o.check_0()
+        await o.check()
+
+        return o 
 
     async def put(self, user, ref, _id, doc_new_0):
-
-        doc_new_0 = await elephant.util.encode(doc_new_0)
-
-        assert isinstance(doc_new_0, dict)
-
         if _id is None:
             return await self._put_new(user, ref, doc_new_0)
 
+        assert isinstance(doc_new_0, dict)
+
+        doc_new_0 = aardvark.util.clean(doc_new_0)
+
+        doc_new_encoded = await elephant.util.encode(doc_new_0)
+
         doc_old_0 = await self.find_one_by_id(user, ref, _id)
+
+        # check before any database operations
+        doc_new_1 = copy.deepcopy(doc_old_0.d)
+        doc_new_1.update(doc_new_0)
+        f0 = await self._factory(doc_new_1)
+        await f0.check_0()
 
         # check permissions
         # TODO use query to do this
@@ -204,33 +227,26 @@ class Engine:
         # this way we are compaing what will be stored in the DB
   
         doc_old_1 = aardvark.util.clean(doc_old_0._d)
-        doc_new_1 = await elephant.util.encode(aardvark.util.clean(doc_new_0))
 
         el0 = doc_old_0.d['_elephant']
         el1 = dict(el0)
 
         assert ref == el0['ref']
 
-        diffs = list(aardvark.diff(doc_old_1, doc_new_1))
-
-        logger.debug('diffs')
-        for d in diffs:
-            logger.debug(repr(d))
+        diffs = list(aardvark.diff(doc_old_1, doc_new_encoded))
 
         # update the old document object
 
-        _ = aardvark.util.clean(doc_old_0.d)
+        #_ = aardvark.util.clean(doc_old_0.d)
 
-        try:
-            elephant.check.check(_, copy.deepcopy)
-            copy.deepcopy(_)
-        except:
-            pprint.pprint(_)
-            raise
+        #elephant.check.check(_, copy.deepcopy)
+        #copy.deepcopy(_)
 
-        aardvark.apply(_, diffs)
+        #aardvark.apply(_, diffs)
 
-        doc_old_0.d.update(_)
+        #doc_old_0.d.update(_)
+
+        doc_old_0.d.update(doc_new_0)
 
         # update temp
 
@@ -262,7 +278,7 @@ class Engine:
 
         # update database
 
-        update = aardvark.util.diffs_to_update(diffs, doc_new_1)
+        update = aardvark.util.diffs_to_update(diffs, doc_new_encoded)
         
         if '$set' not in update:
             update['$set'] = {}
@@ -291,6 +307,7 @@ class Engine:
             if f.get('_root', False): return            
 
             print(crayons.red('local doc has no _elephant field'))
+            pprint.pprint(f)
             raise Exception()
 
             ref = 'master'
