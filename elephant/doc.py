@@ -5,7 +5,7 @@ import elephant.util
 
 logger = logging.getLogger(__name__)
 
-class _AArray:
+class DEP_AArray:
     """
     not for use with local or global
     for use with regular mongo documents
@@ -28,7 +28,7 @@ class _AArray:
         else:
             return default
 
-class File:
+class Doc:
     def __init__(self, e, d, _d):
         self.e = e
         self.d = d

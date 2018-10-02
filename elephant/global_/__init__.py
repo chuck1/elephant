@@ -15,14 +15,14 @@ import crayons
 import aardvark
 import aardvark.util
 import elephant.util
-import elephant.file
+import elephant.doc
 
 logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
 
 class Temp: pass
 
-class File(elephant.file.File):
+class File(elephant.doc.Doc):
     def __init__(self, e, d, _d):
         assert isinstance(d, dict)
         self.e = e
