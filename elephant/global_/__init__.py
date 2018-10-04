@@ -397,14 +397,14 @@ class Engine:
 
         doc_new_0 = await self.pre_put_new(doc_new_0)
 
-        doc_new_1 = aardvark.util.clean(doc_new_0)
+        doc_new_0 = aardvark.util.clean(doc_new_0)
 
         # check before any database operations
-        f0 = await self._factory(copy.deepcopy(doc_new_1))
+        f0 = await self._factory(copy.deepcopy(doc_new_0))
         await f0.check_0()
 
         # need file id to create commit
-        doc_new_encoded = await elephant.util.encode(doc_new_1)
+        doc_new_encoded = await elephant.util.encode(doc_new_0)
 
         res = self.coll.files.insert_one(doc_new_encoded)
 
@@ -412,24 +412,27 @@ class Engine:
 
         diffs = list(aardvark.diff(
                 {}, 
-                await elephant.util.encode(doc_new_1),
+                doc_new_encoded,
                 ))
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
 
         # save ancestors
-        item1 = dict(doc_new_1)
+        item1 = dict(doc_new_0)
         item1["_id"] = file_id
-        item1["_temp"] = {}
 
         f = await self._factory(item1)
 
         await f.update_temp(user)
 
-        res = self.coll.files.update_one({'_id': file_id}, {'$set': {
+        update = {'$set': {
             '_elephant': {"commit_id": commit['_id']},
-            '_temp': f.d["_temp"],
-            }})
+            '_temp':     f.d["_temp"],
+            }}
+
+        logger.info(f'update = {update}')
+
+        res = self.coll.files.update_one({'_id': file_id}, update)
 
         assert res.modified_count == 1
 
@@ -538,6 +541,9 @@ class Engine:
         try:
             await d1.check()
         except Exception as e:
+            logging.error(crayons.red(f"query: {query}"))
+            logging.error(crayons.red(f"pipe0: {pipe0}"))
+            logging.error(crayons.red(f"pipe1: {pipe1}"))
             logging.error(crayons.red(f"{self!r}: check failed for {d!r}: {e!r}"))
             raise
             #await d1.update_temp(self.h.root_user)
