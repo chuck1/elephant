@@ -40,6 +40,9 @@ class Doc:
         else:
             return default
 
+    async def clean_encode(self):
+        return await elephant.util.encode(aardvark.util.clean(self.d))
+
     async def valid_group(self, docs_0):
         pass
 

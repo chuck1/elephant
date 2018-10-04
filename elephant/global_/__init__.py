@@ -148,7 +148,7 @@ class File(elephant.doc.Doc):
         
         if hasattr(self.e, 'h'):
             if user == self.e.h.root_user:
-                logger.info("read allowed: user is root_user")
+                logger.debug("read allowed: user is root_user")
                 return True
         
         creator = await self.creator()
@@ -447,52 +447,53 @@ class Engine:
         if file_id is None:
             return await self.put_new(user, doc_new_0)
 
-        doc_new_1 = aardvark.util.clean(doc_new_0)
+        doc_new_clean = aardvark.util.clean(doc_new_0)
 
         # check before any database operations
-        f0 = await self._factory(copy.deepcopy(doc_new_1))
-        await f0.check_0()
+        _ = await self._factory(copy.deepcopy(doc_new_clean))
+        await _.check_0()
 
         # get existing document
-        f = await self._find_one_by_id(file_id)
+        obj_old = await self._find_one_by_id(file_id, check=False)
 
-        doc_old_0 = copy.deepcopy(f.d)
-
-        item1 = aardvark.util.clean(doc_old_0)
-
-        doc_new_encoded = await elephant.util.encode(doc_new_1)
+        doc_new_encoded = await elephant.util.encode(doc_new_clean)
 
         diffs = list(aardvark.diff(
-                await elephant.util.encode(item1),
+                await obj_old.clean_encode(),
                 doc_new_encoded,
                 ))
 
-        f.d.update(doc_new_1)
-        #aardvark.apply(f.d, diffs)
+        # construct new object
+        _ = copy.deepcopy(obj_old._d)
+        _.update(doc_new_encoded)
+        obj_new = await self._factory(_)
 
-        await f.update_temp(user)
+        await obj_new.update_temp(user)
 
         if not diffs:
-            diffs_temp = list(aardvark.diff(doc_old_0.get("_temp", {}), f.d["_temp"]))
+            #diffs_temp = list(aardvark.diff(doc_old_0.get("_temp", {}), f.d["_temp"]))
+            #if diffs_temp:
 
-         
-            if diffs_temp:
-                logger.info("temp old:")
+            if obj_old.d.get("_temp", {}) != obj_new.d.get("_temp", {}):
+                #logger.info("temp old:")
                 #pprint.pprint(doc_old_0.get("_temp", {}))
-                logger.info("temp new:")
+                #logger.info("temp new:")
                 #pprint.pprint(f.d["_temp"])
-                logger.info("diffs_temp:")
-                for diff in diffs_temp:
-                    logger.info(f'  {repr(diff.address)[:100]}')
-                    logger.info(f'    {repr(diff)[:100]}')
+                #logger.info("diffs_temp:")
+                #for diff in diffs_temp:
+                #    logger.info(f'  {repr(diff.address)[:100]}')
+                #    logger.info(f'    {repr(diff)[:100]}')
 
-                update = {'$set': {}}
-                update['$set']['_temp'] = f.d["_temp"]
+                #update = {'$set': {}}
+                #update['$set']['_temp'] = f.d["_temp"]
+
+                update = {'$set': {"_temp": await obj_new.temp_to_array()}}
+
                 res = self.coll.files.update_one({'_id': file_id}, update)
             
-            return f
+            return obj_new
 
-        if not (await f.has_write_permission(user)):
+        if not (await obj_old.has_write_permission(user)):
             raise elephant.util.AccessDenied()
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
@@ -503,24 +504,24 @@ class Engine:
             update['$set'] = {}
 
         update['$set']['_elephant.commit_id'] = commit["_id"]
-        update['$set']['_temp'] = await f.temp_to_array()
+        update['$set']['_temp'] = await obj_new.temp_to_array()
 
         logger.info("update:")
         logger.info(repr(update))
 
         res = self.coll.files.update_one({'_id': file_id}, update)
 
-        self._cache[file_id] = f
+        self._cache[file_id] = obj_new
 
-        return f
+        return obj_new
 
-    async def _find_one_by_id(self, _id):
-        return await self._find_one({"_id": _id})
+    async def _find_one_by_id(self, _id, check=True):
+        return await self._find_one({"_id": _id}, check=check)
 
     async def find_one_by_id(self, user, _id):
         return await self.find_one(user, {"_id": _id})
 
-    async def _find_one(self, query, pipe0=[], pipe1=[]):
+    async def _find_one(self, query, pipe0=[], pipe1=[], check=True):
         """
         do not check permissions
         """
@@ -538,16 +539,17 @@ class Engine:
 
         assert d1 is not None
 
-        try:
-            await d1.check()
-        except Exception as e:
-            logging.error(crayons.red(f"query: {query}"))
-            logging.error(crayons.red(f"pipe0: {pipe0}"))
-            logging.error(crayons.red(f"pipe1: {pipe1}"))
-            logging.error(crayons.red(f"{self!r}: check failed for {d!r}: {e!r}"))
-            raise
-            #await d1.update_temp(self.h.root_user)
-            #await d1.check()
+        if check:
+            try:
+                await d1.check()
+            except Exception as e:
+                logging.error(crayons.red(f"query: {query}"))
+                logging.error(crayons.red(f"pipe0: {pipe0}"))
+                logging.error(crayons.red(f"pipe1: {pipe1}"))
+                logging.error(crayons.red(f"{self!r}: check failed for {d!r}: {e!r}"))
+                raise
+                #await d1.update_temp(self.h.root_user)
+                #await d1.check()
 
         return d1
 
