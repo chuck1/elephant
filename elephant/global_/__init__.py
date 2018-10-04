@@ -426,10 +426,14 @@ class Engine:
 
         await f.update_temp(user)
 
-        self.coll.files.update_one({'_id': file_id}, {'$set': {
+        res = self.coll.files.update_one({'_id': file_id}, {'$set': {
             '_elephant': {"commit_id": commit['_id']},
             '_temp': f.d["_temp"],
             }})
+
+        assert res.modified_count == 1
+
+        await f.check()
 
         return f
 
@@ -535,8 +539,9 @@ class Engine:
             await d1.check()
         except Exception as e:
             logging.error(crayons.red(f"{self!r}: check failed for {d!r}: {e!r}"))
-            await d1.update_temp(self.h.root_user)
-            await d1.check()
+            raise
+            #await d1.update_temp(self.h.root_user)
+            #await d1.check()
 
         return d1
 

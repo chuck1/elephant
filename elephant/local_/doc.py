@@ -76,10 +76,10 @@ class Doc(elephant.doc.Doc):
 
 
         if user0.freeze() == user1.freeze():
-            logger.info(f"Permission granted: {user0} == {user1}")
+            logger.debug(f"Permission granted: {user0} == {user1}")
             return True
         else:
-            logger.info(f"Permission denied:  {user0} != {user1}")
+            logger.debug(f"Permission denied:  {user0} != {user1}")
             return False
 
 

@@ -207,7 +207,10 @@ class Engine:
 
         doc_new_encoded = await elephant.util.encode(doc_new_0)
 
-        doc_old_0 = await self.find_one_by_id(user, ref, _id)
+        doc_old_0 = await self._find_one_by_id(ref, _id)
+
+        if doc_old_0 is None:
+            raise Exception(f"Error updating document. Document not found ref = {ref} id = {_id}")
 
         # check before any database operations
         doc_new_1 = copy.deepcopy(doc_old_0.d)
