@@ -521,6 +521,10 @@ class Engine:
     async def find_one_by_id(self, user, _id):
         return await self.find_one(user, {"_id": _id})
 
+    async def find_one_by_ref(self, user, ref):
+        if not isinstance(ref, elephant.ref.DocRef): raise TypeError()
+        return await self.find_one_by_id(user, ref._id)
+
     async def _find_one(self, query, pipe0=[], pipe1=[], check=True):
         """
         do not check permissions
