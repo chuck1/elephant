@@ -24,8 +24,8 @@ class _User:
         self.d = {}
 
 class Doc(elephant.doc.Doc):
-    def __init__(self, e, d, _d):
-        super().__init__(e, d, _d)
+    def __init__(self, e, d, _d, *args):
+        super().__init__(e, d, _d, *args)
 
     def freeze(self):
         if '_root' in self.d: return

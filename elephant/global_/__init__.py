@@ -23,11 +23,9 @@ logger_mongo = logging.getLogger(__name__ + "-mongo")
 class Temp: pass
 
 class File(elephant.doc.Doc):
-    def __init__(self, e, d, _d):
+    def __init__(self, e, d, _d, *args):
+        super().__init__(e, d, _d, *args)
         assert isinstance(d, dict)
-        self.e = e
-        self.d = d
-        self._d = _d
         self.temp = Temp()
 
     @classmethod
@@ -515,8 +513,8 @@ class Engine(elephant.Engine):
     async def _find_one_by_id(self, _id, check=True):
         return await self._find_one({"_id": _id}, check=check)
 
-    async def find_one_by_id(self, user, _id):
-        return await self.find_one(user, {"_id": _id})
+    async def find_one_by_id(self, user, _id, check=True):
+        return await self.find_one(user, {"_id": _id}, check=check)
 
     async def find_one_by_ref(self, user, ref):
         if not isinstance(ref, elephant.ref.DocRef): raise TypeError()
@@ -554,9 +552,9 @@ class Engine(elephant.Engine):
 
         return d1
 
-    async def find_one(self, user, query, pipe0=[], pipe1=[]):
+    async def find_one(self, user, query, pipe0=[], pipe1=[], check=True):
 
-        f = await self._find_one(query)
+        f = await self._find_one(query, check=check)
 
         if f is None: return None
 

@@ -29,11 +29,15 @@ class DEP_AArray:
             return default
 
 class Doc:
-    def __init__(self, e, d, _d):
+    def __init__(self, e, d, _d, is_subobject=False):
         self.e = e
         self.d = d
         self._d = _d
-        self.is_subobject = False
+        self.is_subobject = is_subobject
+
+    async def __encode__(self):
+        args = [dict(self.d), self.is_subobject]
+        return {'Document': await elephant.util.encode(args)}
 
     def get(self, k, default):
         if k in self.d:
@@ -101,9 +105,6 @@ class Doc:
         yield
         return
  
-    async def __encode__(self):
-        return {'Document': await elephant.util.encode(dict(self.d))}
-
 
 
 
