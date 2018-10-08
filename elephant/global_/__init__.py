@@ -221,7 +221,7 @@ class File(elephant.doc.Doc):
  
 
   
-class Engine:
+class Engine(elephant.Engine):
     """
     This implements the collection-wide commit concept
     
@@ -314,9 +314,6 @@ class Engine:
 
         if sort:
             yield {'$sort': bson.son.SON(sort)}
-
-    async def _factory(self, d):
-        return self._doc_class(self, await self.h.decode(d), d)
 
     async def object_or_id(self, o):
 

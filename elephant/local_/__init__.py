@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
            
 
-class Engine:
+class Engine(elephant.Engine):
     """
     This implements the per-item version concept
 
@@ -105,9 +105,6 @@ class Engine:
             assert 'user' in c
             assert 'time' in c
             assert isinstance(c['time'], datetime.datetime)
-
-    async def _factory(self, d):
-        return self._doc_class(self, await self.h.decode(d), d)
 
     def _commit_path(self, c0, c1):
 

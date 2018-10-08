@@ -33,6 +33,7 @@ class Doc:
         self.e = e
         self.d = d
         self._d = _d
+        self.is_subobject = False
 
     def get(self, k, default):
         if k in self.d:
@@ -102,5 +103,11 @@ class Doc:
  
     async def __encode__(self):
         return {'Document': await elephant.util.encode(dict(self.d))}
+
+
+
+
+
+
 
 
