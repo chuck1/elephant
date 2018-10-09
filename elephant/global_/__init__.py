@@ -597,7 +597,7 @@ class Engine(elephant.Engine):
             ]
         pipe = pipe0 + pipe + pipe1
 
-        with elephant.util.stopwatch(logger_mongo.info, "aggregate "):
+        with elephant.util.stopwatch(logger_mongo.debug, "aggregate "):
             c = self.coll.files.aggregate(pipe, allowDiskUse=True)
 
         for d in c:
