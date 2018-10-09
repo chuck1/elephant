@@ -1,9 +1,11 @@
-
-
+import enum
 import logging
 
 logger = logging.getLogger(__name__)
 
+class EncodeMode(enum.Enum):
+    CLIENT   = 0
+    DATABASE = 1
 
 class Engine:
 
@@ -15,6 +17,7 @@ class Engine:
         except Exception as e:
             logger.error("failed to create {self._doc_class}")
             raise
+        o.h = self.h
         return o
 
 

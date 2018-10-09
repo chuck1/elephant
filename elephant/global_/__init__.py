@@ -399,7 +399,7 @@ class Engine(elephant.Engine):
         await f0.check_0()
 
         # need file id to create commit
-        doc_new_encoded = await elephant.util.encode(doc_new_0)
+        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_0)
 
         res = self.coll.files.insert_one(doc_new_encoded)
 
@@ -451,10 +451,10 @@ class Engine(elephant.Engine):
         # get existing document
         obj_old = await self._find_one_by_id(file_id, check=False)
 
-        doc_new_encoded = await elephant.util.encode(doc_new_clean)
+        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_clean)
 
         diffs = list(aardvark.diff(
-                await obj_old.clean_encode(),
+                await obj_old.clean_encode(user),
                 doc_new_encoded,
                 ))
 
@@ -482,7 +482,7 @@ class Engine(elephant.Engine):
                 #update = {'$set': {}}
                 #update['$set']['_temp'] = f.d["_temp"]
 
-                update = {'$set': {"_temp": await obj_new.temp_to_array()}}
+                update = {'$set': {"_temp": await obj_new.temp_to_array(user)}}
 
                 res = self.coll.files.update_one({'_id': file_id}, update)
             
@@ -499,7 +499,7 @@ class Engine(elephant.Engine):
             update['$set'] = {}
 
         update['$set']['_elephant.commit_id'] = commit["_id"]
-        update['$set']['_temp'] = await obj_new.temp_to_array()
+        update['$set']['_temp'] = await obj_new.temp_to_array(user)
 
         logger.info("update:")
         logger.info(repr(update))

@@ -35,9 +35,9 @@ class Doc:
         self._d = _d
         self.is_subobject = is_subobject
 
-    async def __encode__(self):
+    async def __encode__(self, h, user, mode):
         args = [dict(self.d), self.is_subobject]
-        return {'Document': await elephant.util.encode(args)}
+        return {'Document': await elephant.util.encode(h, user, mode, args)}
 
     def get(self, k, default):
         if k in self.d:
@@ -45,8 +45,8 @@ class Doc:
         else:
             return default
 
-    async def clean_encode(self):
-        return await elephant.util.encode(aardvark.util.clean(self.d))
+    async def clean_encode(self, user):
+        return await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, aardvark.util.clean(self.d))
 
     async def valid_group(self, docs_0):
         pass
@@ -90,8 +90,8 @@ class Doc:
     def commits(self, ref = None):
         return reversed(list(self._commits(ref)))
 
-    async def temp_to_array(self):
-        return await elephant.util.encode(dict(self.d['_temp']))
+    async def temp_to_array(self, user):
+        return await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, dict(self.d['_temp']))
 
     def list_connected(self, user, query=None):
         yield from self.list_upstream(user, query)

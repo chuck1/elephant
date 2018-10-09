@@ -14,10 +14,10 @@ def stopwatch(p, s):
     t1 = time.perf_counter_ns()
     p(s + f"{(t1 - t0) / 1e6:10.6f} ms")
 
-async def encode(o):
+async def encode(h, user, mode, o):
      
     if hasattr(o, "__encode__"):
-        a = await o.__encode__()
+        a = await o.__encode__(h, user, mode)
 
         try:
             bson.json_util.dumps(a)
@@ -29,10 +29,10 @@ async def encode(o):
         return a
    
     if isinstance(o, dict):
-        return {k: await encode(v) for k, v in o.items()}
+        return {k: await encode(h, user, mode, v) for k, v in o.items()}
 
     if isinstance(o, (list, tuple)):
-        return [await encode(v) for v in o]
+        return [await encode(h, user, mode, v) for v in o]
 
 
     # check

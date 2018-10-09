@@ -158,7 +158,7 @@ class Engine(elephant.Engine):
         f0 = await self._factory(copy.deepcopy(doc_new_0))
         await f0.check_0()
 
-        doc_new_encoded = await elephant.util.encode(doc_new_0)
+        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_0)
 
         # calculate diffs
         diffs = list(aardvark.diff({}, doc_new_encoded))
@@ -202,7 +202,7 @@ class Engine(elephant.Engine):
 
         doc_new_0 = aardvark.util.clean(doc_new_0)
 
-        doc_new_encoded = await elephant.util.encode(doc_new_0)
+        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_0)
 
         doc_old_0 = await self._find_one_by_id(ref, _id)
 
@@ -285,7 +285,8 @@ class Engine(elephant.Engine):
 
         update['$set']['_elephant'] = el1
 
-        update['$set']['_temp'] = await elephant.util.encode(doc_old_0.d["_temp"])
+        update['$set']['_temp'] = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE,
+                doc_old_0.d["_temp"])
 
         elephant.check.check(update, bson.json_util.dumps)
 
