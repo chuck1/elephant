@@ -11,7 +11,14 @@ class DocRef:
         if not ((ref is None) or isinstance(ref, (str, bson.objectid.ObjectId))): raise TypeError()
         self._id = _id
         self.ref = ref
-    async def __encode__(self):
-        return {"DocRef": [self._id, self.ref]}
-        
+
+    async def __encode__(self, h, user, mode):
+        args = [self._id, self.ref]
+        return {"DocRef": await elephant.util.encode(h, user, mode, args)}
+       
+    def __eq__(self, other):
+        if self._id != other._id: return False
+        if self.ref != other.ref: return False
+        return True
+ 
 

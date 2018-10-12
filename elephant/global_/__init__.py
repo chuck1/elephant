@@ -157,7 +157,7 @@ class File(elephant.doc.Doc):
         b = user.freeze() == creator.freeze()
 
         if b:
-            logger.info("read allowed: user is creator")
+            logger.debug("read allowed: user is creator")
 
         return b
 
@@ -422,7 +422,7 @@ class Engine(elephant.Engine):
 
         update = {'$set': {
             '_elephant': {"commit_id": commit['_id']},
-            '_temp':     f.d["_temp"],
+            '_temp':     await f.temp_to_array(user),
             }}
 
         logger.info(f'update = {update}')
@@ -596,6 +596,8 @@ class Engine(elephant.Engine):
             {'$match': query},
             ]
         pipe = pipe0 + pipe + pipe1
+
+        pipe = await elephant.util.encode(self.h, None, elephant.EncodeMode.DATABASE, pipe)
 
         with elephant.util.stopwatch(logger_mongo.debug, "aggregate "):
             c = self.coll.files.aggregate(pipe, allowDiskUse=True)

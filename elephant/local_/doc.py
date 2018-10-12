@@ -14,6 +14,7 @@ import networkx as nx
 import elephant.check
 import elephant.util
 import elephant.doc
+import elephant.ref
 
 logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
@@ -31,15 +32,15 @@ class Doc(elephant.doc.Doc):
         if '_root' in self.d: return
 
         if isinstance(self.d['_elephant']['ref'], bson.objectid.ObjectId):
-            return {
-                'id': self.d['_id'],
-                'ref': self.d['_elephant']['ref'],
-                }
+            return elephant.ref.DocRef(
+                    self.d['_id'],
+                    self.d['_elephant']['ref'],
+                    )
         else:
-            return {
-                'id': self.d['_id'],
-                'ref': self.d['_elephant']['refs'][self.d['_elephant']['ref']],
-                }
+            return elephant.ref.DocRef(
+                    self.d['_id'],
+                    self.d['_elephant']['refs'][self.d['_elephant']['ref']],
+                    )
 
     @classmethod
     async def get_test_document(cls, b0={}):
@@ -79,7 +80,11 @@ class Doc(elephant.doc.Doc):
             logger.debug(f"Permission granted: {user0} == {user1}")
             return True
         else:
-            logger.debug(f"Permission denied:  {user0} != {user1}")
+
+            #ref_0 = await user0.freeze().__encode__(None, None, None)
+            #if ref_0 == user1.freeze():
+
+            logger.info(f"Permission denied:  {user0.freeze()} != {user1.freeze()}")
             return False
 
 
