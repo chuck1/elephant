@@ -35,7 +35,7 @@ class File(elephant.doc.Doc):
         return b
 
     def freeze(self):
-        return self.d["_id"]
+        return elephant.ref.DocRef(self.d["_id"])
 
     def get(self, k, default):
         if k in self.d:
@@ -553,6 +553,8 @@ class Engine(elephant.Engine):
         return d1
 
     async def find_one(self, user, query, pipe0=[], pipe1=[], check=True):
+
+        query = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, query)
 
         f = await self._find_one(query, check=check)
 

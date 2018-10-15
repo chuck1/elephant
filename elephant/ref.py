@@ -17,6 +17,7 @@ class DocRef:
         return {"DocRef": await elephant.util.encode(h, user, mode, args)}
        
     def __eq__(self, other):
+        if other is None: return False
         if self._id != other._id: return False
         if self.ref != other.ref: return False
         return True
