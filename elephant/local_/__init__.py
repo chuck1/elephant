@@ -259,7 +259,7 @@ class Engine(elephant.Engine):
 
             if doc_old_0.d.get("_temp", {}) != temp_old:
                 logger.info('document unchanged but temp change')
-                update = {'$set': {"_temp": await doc_old_0.temp_to_array()}}
+                update = {'$set': {"_temp": await doc_old_0.temp_to_array(user)}}
                 res = self.coll.files.update_one({'_id': _id}, update)
             
             return doc_old_0
@@ -425,7 +425,7 @@ class Engine(elephant.Engine):
         return 
         yield
 
-    async def _find(self, query={}, pipe0=[], pipe1=[]):
+    async def _find(self, query={}, pipe0=[], pipe1=[], check=True):
         assert isinstance(pipe0, list)
         assert isinstance(pipe1, list)
 

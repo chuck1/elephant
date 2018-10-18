@@ -18,6 +18,7 @@ class DocRef:
        
     def __eq__(self, other):
         if other is None: return False
+        if not isinstance(other, DocRef): return False
         if self._id != other._id: return False
         if self.ref != other.ref: return False
         return True

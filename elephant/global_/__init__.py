@@ -101,7 +101,7 @@ class File(elephant.doc.Doc):
  
         commits = list(self.e.coll.commits.aggregate(pipe))
 
-        #self.d["_temp"]["commits"] = 
+        self.d["_temp"]["commits"] = commits
 
         #self.d["_temp"]["last_commit"]  = self.d['_temp']['commits'][-1]
 
@@ -183,6 +183,8 @@ class File(elephant.doc.Doc):
 
     async def creator_id(self):
 
+        return self.d["_temp"]["commits"][0]["user"]
+
         if "_temp" in self.d:
             if "first_commit" in self.d["_temp"]:
                 return self.d["_temp"]["first_commit"]["user"]
@@ -208,6 +210,7 @@ class File(elephant.doc.Doc):
     async def creator(self):
         user_id = await self.creator_id()
         user = await self.e.h.e_users._find_one("master", {"_id": user_id})
+        assert user is not None
         return user
  
     def commits1(self):
@@ -466,21 +469,8 @@ class Engine(elephant.Engine):
         await obj_new.update_temp(user)
 
         if not diffs:
-            #diffs_temp = list(aardvark.diff(doc_old_0.get("_temp", {}), f.d["_temp"]))
-            #if diffs_temp:
 
             if obj_old.d.get("_temp", {}) != obj_new.d.get("_temp", {}):
-                #logger.info("temp old:")
-                #pprint.pprint(doc_old_0.get("_temp", {}))
-                #logger.info("temp new:")
-                #pprint.pprint(f.d["_temp"])
-                #logger.info("diffs_temp:")
-                #for diff in diffs_temp:
-                #    logger.info(f'  {repr(diff.address)[:100]}')
-                #    logger.info(f'    {repr(diff)[:100]}')
-
-                #update = {'$set': {}}
-                #update['$set']['_temp'] = f.d["_temp"]
 
                 update = {'$set': {"_temp": await obj_new.temp_to_array(user)}}
 
@@ -507,6 +497,8 @@ class Engine(elephant.Engine):
         res = self.coll.files.update_one({'_id': file_id}, update)
 
         self._cache[file_id] = obj_new
+
+        await obj_new.check()
 
         return obj_new
 
@@ -575,12 +567,6 @@ class Engine(elephant.Engine):
             
             commits1 = [c for c in commits if f["_id"] in [l["file_id"] for l in c["files"]]]
             
-            if not commits1:
-                #print(f["_id"])
-                #for c in commits:
-                #    print([l["file_id"] for l in c["files"]])
-                print(f"didnt find any commits for {f}")
-            
             assert commits1
 
             f["_temp"]["commits"] = commits1
@@ -592,7 +578,7 @@ class Engine(elephant.Engine):
 
             yield f1
 
-    async def _find(self, query, pipe0=[], pipe1=[]):
+    async def _find(self, query, pipe0=[], pipe1=[], check=True):
 
         pipe = [
             {'$match': query},
@@ -605,13 +591,20 @@ class Engine(elephant.Engine):
             c = self.coll.files.aggregate(pipe, allowDiskUse=True)
 
         for d in c:
+
+            if "_temp" not in d:
+                raise Exception(f"document {d!r} has no _temp field")
+
             d1 = await self._factory(d)
+
+            if check:
+                await d1.check()
 
             yield d1
 
-    async def find(self, user, query, pipe0=[], pipe1=[]):
+    async def find(self, user, query, pipe0=[], pipe1=[], check=True):
         
-        async for d in self._find(query, pipe0, pipe1):
+        async for d in self._find(query, pipe0, pipe1, check=check):
 
             if await d.has_read_permission(user):
                 yield d

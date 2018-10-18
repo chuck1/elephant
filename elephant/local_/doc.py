@@ -219,13 +219,11 @@ class Doc(elephant.doc.Doc):
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
 
-        if "_temp" not in self.d: self.d["_temp"] = {}
+        self.d["_temp"] = {}
 
-        if "commits" not in self.d["_temp"]:
+        commits = list(self.e.coll.commits.find({"file": self.d["_id"]}))
 
-            commits = list(self.e.coll.commits.find({"file": self.d["_id"]}))
-
-            self.d["_temp"]["commits"] = commits
+        self.d["_temp"]["commits"] = commits
 
     async def temp_messages(self):
         return
