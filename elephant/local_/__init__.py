@@ -426,6 +426,8 @@ class Engine(elephant.Engine):
         yield
 
     async def _find(self, query={}, pipe0=[], pipe1=[]):
+        assert isinstance(pipe0, list)
+        assert isinstance(pipe1, list)
 
         pipe = pipe0 + [{'$match': query}] + pipe1
 
@@ -441,6 +443,8 @@ class Engine(elephant.Engine):
             yield await self._factory(d)
 
     async def find(self, user, query, pipe0=[], pipe1=[]):
+        assert isinstance(pipe0, list)
+        assert isinstance(pipe1, list)
 
         async for d in self._find(query, pipe0, pipe1):
 
