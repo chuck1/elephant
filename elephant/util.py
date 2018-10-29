@@ -36,7 +36,11 @@ async def encode(h, user, mode, o):
 
 
     # check
-    bson.json_util.dumps(o)
+    try:
+        bson.json_util.dumps(o)
+    except:
+        print(f'could not encode {type(o)} {o!r}')
+        raise
 
 
     return o
