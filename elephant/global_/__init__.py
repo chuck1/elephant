@@ -618,7 +618,7 @@ class Engine(elephant.Engine):
         c = self.coll.files.aggregate(pipe, allowDiskUse=True)
         
         for d in c:
-            d1 = self._factory(d)
+            d1 = await self._factory(d)
             if await d1.has_read_permission(user):
                 yield d1
       
