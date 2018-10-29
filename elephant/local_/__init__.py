@@ -147,10 +147,17 @@ class Engine(elephant.Engine):
 
         return res.inserted_id
 
+    async def pre_put_new(self, d_0):
+        """
+        override to add data to new documents before they are created
+        this is called before clean, so underscore-escaped fields will have no effect
+        """
+        return d_0
+
     async def _put_new(self, user, ref, doc_new_0):
         assert isinstance(doc_new_0, dict)
 
-        #doc_new_0 = await self.pre_put_new(doc_new_0)
+        doc_new_0 = await self.pre_put_new(doc_new_0)
 
         doc_new_0 = aardvark.util.clean(doc_new_0)
 

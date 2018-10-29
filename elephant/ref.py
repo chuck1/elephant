@@ -22,5 +22,13 @@ class DocRef:
         if self._id != other._id: return False
         if self.ref != other.ref: return False
         return True
+
+    def __lt__(self, other):
+        assert isinstance(other, DocRef)
+        if self._id != other._id: return self._id < other._id
+        return self.ref < other.ref
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self._id}, {self.ref})'
  
 
