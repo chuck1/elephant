@@ -432,6 +432,10 @@ class Engine(elephant.Engine):
         return 
         yield
 
+    def pipe1(self, sort=None):
+        return 
+        yield
+
     async def _find(self, query={}, pipe0=[], pipe1=[], check=True):
         assert isinstance(pipe0, list)
         assert isinstance(pipe1, list)
@@ -457,6 +461,19 @@ class Engine(elephant.Engine):
 
             if await d.has_read_permission(user):
                 yield d
+
+    async def aggregate(self, user, pipeline_generator):
+
+        pipe = list(pipeline_generator())
+
+        c = self.coll.files.aggregate(pipe, allowDiskUse=True)
+        
+        for d in c:
+            d1 = await self._factory(d)
+            if await d1.has_read_permission(user):
+                yield d1
+
+
 
 
 
