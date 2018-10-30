@@ -162,28 +162,6 @@ class Doc(elephant.doc.Doc):
 
         return self.d["_temp"]["commits"][0].user
 
-        if "_temp" in self.d:
-            if "first_commit" in self.d["_temp"]:
-                return self.d["_temp"]["first_commit"]["user"]
-
-        commits = self.commits1()
-
-        try:
-            commit0 = next(commits)
-        except StopIteration:
-            print(crayons.red('no commits'))
-            return
-
-        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
-        if 'user' not in commit0:
-            print(crayons.red('no user'))
-            pprint.pprint(commit0)
-            #commit0['user'] = my_id
-            #self.e.coll.commits.update_one({'_id': commit0['_id']}, 
-            #{'$set': {'user': commit0['user']}})
-
-        user_id = commit0['user']
-
     async def creator(self):
         user_id = await self.creator_id()
         user = await self.e.h.e_users._find_one("master", {"_id": user_id})
