@@ -23,212 +23,6 @@ logger_mongo = logging.getLogger(__name__ + "-mongo")
 
 class Temp: pass
 
-class File(elephant.doc.Doc):
-    def __init__(self, e, d, _d, *args):
-        super().__init__(e, d, _d, *args)
-        assert isinstance(d, dict)
-        self.temp = Temp()
-
-    @classmethod
-    async def get_test_document(cls, b0={}):
-        b = {"test_field": str(time.time())}
-        b.update(b0)
-        return b
-
-    def freeze(self):
-        return elephant.ref.DocRef(self.d["_id"])
-
-    def get(self, k, default):
-        if k in self.d:
-            return self.d[k]
-        return default
-
-    def get(self, k):
-        return self.d[k]
-
-    def __setitem__(self, k, v):
-        self.d[k] = v
-        updates = {'$set': {k: v}}
-        self.e.coll.files.update_one({'_id': self.d['_id']}, updates)
-
-    def valid(self):
-        pass
-
-    async def check_0(self):
-        pass
-
-    async def check(self):
-        creator = await self.creator()
-
-        self.d["_temp"]
-        self.d["_temp"]["first_commit"]
-
-        # used in the read_permissions pipe
-        self.d["_temp"]["first_commit"].user
-
-    async def update_temp(self, user):
-        """
-        recalculate _temp fields
-        _temp fields store data in the database for querying
-        this should be done before a document is written, not when it is read.
-
-        fields:
-          first_commit
-        """
-	
-        self.d["_temp"] = {}
- 
-        await self.temp_commits()
-
-    def _commits_1(self):
-
-        pipe = [
-                {'$addFields': {'files1': '$files'}},
-                {'$unwind': '$files1'},
-                {'$match': {'$expr': {'$eq': ["$files1.file_id", self.d["_id"]]}}},
-                {'$project': {'files1': 0}},
-                ]
-
-        return list(self.e.coll.commits.aggregate(pipe))
-
-    async def temp_commits(self):
-
-        pipe = [
-                {'$addFields': {'files1': '$files'}},
-                {'$unwind': '$files1'},
-                {'$match': {'$expr': {'$eq': ["$files1.file_id", self.d["_id"]]}}},
-                {'$project': {'files1': 0}},
-                ]
- 
-        commits = list(elephant.commit.Commit(
-                _["_id"],
-                _["time"],
-                _["user"],
-                _["parent"],
-                _["files"],
-                ) for _ in self.e.coll.commits.aggregate(pipe))
-
-        self.d["_temp"]["commits"] = commits
-
-        #self.d["_temp"]["last_commit"]  = self.d['_temp']['commits'][-1]
-
-        self.d["_temp"]["first_commit"] = commits[0]
-
-        del commits
-
-    async def delete(self):
-        self.e.coll.files.delete_one({'_id': self.d["_id"]})
-
-    def update(self, updates):
-        self.e.coll.files.update_one({"_id": self.d['_id']}, updates)
-
-    async def put(self, user=None):
-        return await self.e.put(user, self.d["_id"], self.d)
-
-    def _commits(self, ref):
-        def _find(commit_id):
-            for c in self.d["_temp"]["commits"]:
-                if c["_id"] == commit_id:
-                    return c
-
-        #ref = ref or self.d["_elephant"]["ref"]
-
-        if isinstance(ref, bson.objectid.ObjectId):
-            id0 = ref
-        else:
-            ref = self.e.coll.refs.find_one({'name': ref})
-            id0 = ref["commit_id"]
-
-        c0 = _find(id0)
-
-        while c0:
-            yield c0
-            
-            c0 = _find(c0["parent"])
-
-    async def has_read_permission(self, user):
-        if user is None: 
-            logger.info("read denied: user is None")
-            return False
-        
-        if hasattr(self.e, 'h'):
-            if user == self.e.h.root_user:
-                logger.debug("read allowed: user is root_user")
-                return True
-        
-        creator = await self.creator()
-        
-        logger.debug(f"user    = {user} {user.freeze()}")
-        logger.debug(f"creator = {creator} {creator.freeze()}")
-
-        b = user.freeze() == creator.freeze()
-
-        if b:
-            logger.debug("read allowed: user is creator")
-
-        return b
-
-    async def has_write_permission(self, user):
-        if user is None:
-            logger.info("write permission denied: user is None")
-            return False
-
-        if hasattr(self.e, 'h'):
-            if user == self.e.h.root_user:
-                logger.info("write permission allowed: user is root")
-                return True
-
-        creator = await self.creator()
-        if user.freeze() == creator.freeze():
-            logger.info("write permission allowed: user is creator")
-            return True
-
-        logger.info("write permission denied: user is not root or creator")
-        logger.info(f"user = {user}")
-        logger.info(f"user = {user}")
-        return False
-
-    async def creator_id(self):
-
-        return self.d["_temp"]["commits"][0].user
-
-        if "_temp" in self.d:
-            if "first_commit" in self.d["_temp"]:
-                return self.d["_temp"]["first_commit"]["user"]
-
-        commits = self.commits1()
-
-        try:
-            commit0 = next(commits)
-        except StopIteration:
-            print(crayons.red('no commits'))
-            return
-
-        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
-        if 'user' not in commit0:
-            print(crayons.red('no user'))
-            pprint.pprint(commit0)
-            #commit0['user'] = my_id
-            #self.e.coll.commits.update_one({'_id': commit0['_id']}, 
-            #{'$set': {'user': commit0['user']}})
-
-        user_id = commit0['user']
-
-    async def creator(self):
-        user_id = await self.creator_id()
-        user = await self.e.h.e_users._find_one("master", {"_id": user_id})
-        assert user is not None
-        return user
- 
-    def commits1(self):
-        return self.e.coll.commits.find({"files.file_id": self.d["_id"]}).sort([('time', 1)])
-
-    async def temp_messages(self):
-        return
-        yield
- 
-
-  
 class Engine(elephant.Engine):
     """
     This implements the collection-wide commit concept
@@ -245,7 +39,8 @@ class Engine(elephant.Engine):
         {
             # these key-value pairs make up the traditional content of a mongo item.
             # they are stored at the root of the item.
-            # to elephant, this information is temporary, it can be automatically created based on version history
+            # to elephant, this information is temporary, it can be automatically 
+            # created based on version history
             # it is used for convenient access of a particular state of the item
 
             "_id": "123",
@@ -599,8 +394,8 @@ class Engine(elephant.Engine):
 
         for d in c:
 
-            if "_temp" not in d:
-                raise Exception(f"document {d!r} has no _temp field")
+            #if "_temp" not in d:
+            #    raise Exception(f"document {d!r} has no _temp field")
 
             d1 = await self._factory(d)
 

@@ -1,10 +1,17 @@
 
 import elephant.util
 
-class Commit:
+class CommitGlobal:
     @classmethod
     async def decode(cls, h, args):
-        return Commit(**args)
+        _id, time, user, parent, files = args
+        return cls(
+                await h.decode(_id),
+                await h.decode(time),
+                await h.decode(user),
+                await h.decode(parent),
+                files,
+                )
 
     def __init__(self, _id, time, user, parent, files):
         self._id = _id
@@ -21,12 +28,20 @@ class Commit:
             self.parent,
             self.files,
             ]
-        return {"Commit": await elephant.util.encode(h, user, mode, args)}
+        return {"CommitGlobal": await elephant.util.encode(h, user, mode, args)}
 
 class CommitLocal:
     @classmethod
     async def decode(cls, h, args):
-        return Commit(**args)
+        _id, time, user, parent, file_, changes = args
+        return cls(
+                await h.decode(_id),
+                await h.decode(time),
+                await h.decode(user),
+                await h.decode(parent),
+                await h.decode(file_),
+                changes,
+                )
 
     def __init__(self, _id, time, user, parent, file_, changes):
         self._id = _id
@@ -43,7 +58,10 @@ class CommitLocal:
             self.user,
             self.parent,
             self.file_,
-            self.changes,
             ]
-        return {"Commit": await elephant.util.encode(h, user, mode, args)}
+        args = await elephant.util.encode(h, user, mode, args)
+        # we must not encode the changes because they contain old versions of data structures
+        # that are not compatible with current program
+        args.append(self.changes)
+        return {"CommitLocal": args}
 

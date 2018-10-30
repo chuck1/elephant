@@ -149,13 +149,11 @@ class Doc(elephant.doc.Doc):
 
         self._assert_elephant()
 
-        commits = self.commits()
-
         my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
         my_user = _User()
         my_user.d['_id'] = my_id
 
-        commit0 = next(commits)
+        commit0 = next(await self.commits())
  
         # TODO move this to a migration
         try:
@@ -183,7 +181,7 @@ class Doc(elephant.doc.Doc):
                     {'_id': self.d['_id']}, {'$set': {'_elephant': item['_elephant']}})
             return
 
-        if 'user' not in commit0:
+        if not commit0.user:
             commit0 = self.e.coll.commits.find_one({'_id': commit0['_id']})
             print(crayons.yellow('local: no user in commit'))
             if 'user' not in commit0:
@@ -201,7 +199,7 @@ class Doc(elephant.doc.Doc):
                 self.update_temp(user)
                 self.put('master', None)
  
-        user = commit0['user']
+        user = commit0.user
         assert user is not None
         return await self.e.h.e_users._find_one_by_id("master", user)
  
@@ -221,7 +219,11 @@ class Doc(elephant.doc.Doc):
 
         self.d["_temp"] = {}
 
-        commits = list(elephant.commit.CommitLocal(
+        self.d["_temp"]["commits"] = await self.temp_commits()
+
+    async def temp_commits(self):
+
+        return list(elephant.commit.CommitLocal(
                 _["_id"],
                 _["time"],
                 _["user"],
@@ -229,8 +231,6 @@ class Doc(elephant.doc.Doc):
                 _["file"],
                 _["changes"],
                 ) for _ in self.e.coll.commits.find({"file": self.d["_id"]}))
-
-        self.d["_temp"]["commits"] = commits
 
     async def temp_messages(self):
         return

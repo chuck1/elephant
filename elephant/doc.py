@@ -46,26 +46,34 @@ class Doc:
             return default
 
     async def clean_encode(self, user):
-        return await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, aardvark.util.clean(self.d))
+        return await elephant.util.encode(
+                self.h, user, elephant.EncodeMode.DATABASE, aardvark.util.clean(self.d))
 
     async def valid_group(self, docs_0):
         pass
 
-    def _commits(self, ref = None):
+    async def _commits(self, ref = None):
+        # yield commits in order
 
         if self.d.get('_root', False): return
 
-        def _find(commit_id):
+        async def _temp_commits():
             if '_temp' in self.d:
-
-                if not "commits" in self.d["_temp"]:
-                    logger.warning(f"{self!r} has not field '_temp.commits'")
-
-                for c in self.d["_temp"]["commits"]:
-                    if c._id == commit_id:
-                        return c
+                if "commits" in self.d["_temp"]:
+                    return self.d["_temp"]["commits"]
             
-            return self.e.coll.commits.find_one({'_id': commit_id})
+            return await self._temp_commits()
+
+        def _find(commits, commit_id):
+            for c in commits:
+                if c._id == commit_id:
+                    return c
+            return
+            raise Exception(f'{commit_id} {commits}')
+
+        #############################
+
+        commits = await _temp_commits()
 
         ref = ref or self.d["_elephant"]["ref"]
 
@@ -78,17 +86,15 @@ class Doc:
             #ref = self.e.coll.refs.find_one({'name': ref})
             #id0 = ref["commit_id"]
 
-        c0 = _find(id0)
+        c0 = _find(commits, id0)
 
         while c0:
             yield c0
             
-            c0 = _find(c0.parent)
+            c0 = _find(commits, c0.parent)
 
-
-
-    def commits(self, ref = None):
-        return reversed(list(self._commits(ref)))
+    async def commits(self, ref = None):
+        return reversed([_ async for _ in self._commits(ref)])
 
     async def temp_to_array(self, user):
         return await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, dict(self.d['_temp']))

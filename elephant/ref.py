@@ -4,6 +4,7 @@ import elephant.util
 class DocRef:
     @classmethod
     async def decode(cls, h, args):
+        args = await h.decode(args)
         return DocRef(*args)
 
     def __init__(self, _id, ref=None):
