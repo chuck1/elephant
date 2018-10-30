@@ -135,6 +135,8 @@ class Doc(elephant.doc.Doc):
 
         if b:
             logger.debug("read allowed: user is creator")
+        else:
+            logger.info("read denied: user is not creator")
 
         return b
 
@@ -158,16 +160,7 @@ class Doc(elephant.doc.Doc):
         logger.info(f"user = {user}")
         return False
 
-    async def creator_id(self):
 
-        return self.d["_temp"]["commits"][0].user
-
-    async def creator(self):
-        user_id = await self.creator_id()
-        user = await self.e.h.e_users._find_one("master", {"_id": user_id})
-        assert user is not None
-        return user
- 
     def commits1(self):
         return self.e.coll.commits.find({"files.file_id": self.d["_id"]}).sort([('time', 1)])
 

@@ -29,16 +29,30 @@ class DEP_AArray:
             return default
 
 class Doc:
+    async def __encode__(self, h, user, mode):
+        args = [dict(self.d), self.is_subobject]
+        return {'Document': await elephant.util.encode(h, user, mode, args)}
+
     def __init__(self, e, d, _d, is_subobject=False):
         self.e = e
         self.d = d
         self._d = _d
         self.is_subobject = is_subobject
 
-    async def __encode__(self, h, user, mode):
-        args = [dict(self.d), self.is_subobject]
-        return {'Document': await elephant.util.encode(h, user, mode, args)}
+    async def creator_id(self):
+        return self.d["_temp"]["commits"][0].user
 
+    async def creator(self):
+        if self.d.get('_root'):
+            logger.info("has field _root!")
+            pprint.pprint(self.d)
+            return None
+
+        user_id = await self.creator_id()
+        user = await self.e.h.e_users._find_one_by_id("master", user_id)
+        assert user is not None
+        return user
+ 
     def get(self, k, default):
         if k in self.d:
             return self.d[k]

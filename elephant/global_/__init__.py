@@ -104,8 +104,9 @@ class Engine(elephant.Engine):
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
     def _pipe_read_permission(self, user):
-        
-        yield {'$match': {'_temp.first_commit.user': user.d["_id"]}}
+        # TODO temporary
+        return
+        yield {'$match': {'_temp.commits[0].CommitGlobal[2]': user.d["_id"]}}
 
     def pipe0(self, user):
         # for mongo aggregate
@@ -397,6 +398,9 @@ class Engine(elephant.Engine):
             #if "_temp" not in d:
             #    raise Exception(f"document {d!r} has no _temp field")
 
+            print("_temp.commits[0].CommitGlobal[2]")
+            pprint.pprint(d["_temp"]["commits"][0]["CommitGlobal"][2])
+
             d1 = await self._factory(d)
 
             if check:
@@ -406,7 +410,11 @@ class Engine(elephant.Engine):
 
     async def find(self, user, query, pipe0=[], pipe1=[], check=True):
         
+        logger.info(f'user = {user.d["_id"]!r}')
+
         async for d in self._find(query, pipe0, pipe1, check=check):
+            b = user.d["_id"] == d._d["_temp"]["commits"][0]["CommitGlobal"][2]
+            logger.info(f"user is creator = {b}")
 
             if await d.has_read_permission(user):
                 yield d
