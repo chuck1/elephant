@@ -16,6 +16,7 @@ import aardvark
 import aardvark.util
 import elephant.util
 import elephant.doc
+import elephant.commit
 
 logger = logging.getLogger(__name__)
 logger_mongo = logging.getLogger(__name__ + "-mongo")
@@ -63,7 +64,7 @@ class File(elephant.doc.Doc):
         self.d["_temp"]["first_commit"]
 
         # used in the read_permissions pipe
-        self.d["_temp"]["first_commit"]["user"]
+        self.d["_temp"]["first_commit"].user
 
     async def update_temp(self, user):
         """
@@ -99,7 +100,13 @@ class File(elephant.doc.Doc):
                 {'$project': {'files1': 0}},
                 ]
  
-        commits = list(self.e.coll.commits.aggregate(pipe))
+        commits = list(elephant.commit.Commit(
+                _["_id"],
+                _["time"],
+                _["user"],
+                _["parent"],
+                _["files"],
+                ) for _ in self.e.coll.commits.aggregate(pipe))
 
         self.d["_temp"]["commits"] = commits
 
@@ -183,7 +190,7 @@ class File(elephant.doc.Doc):
 
     async def creator_id(self):
 
-        return self.d["_temp"]["commits"][0]["user"]
+        return self.d["_temp"]["commits"][0].user
 
         if "_temp" in self.d:
             if "first_commit" in self.d["_temp"]:

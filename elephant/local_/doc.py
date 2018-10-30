@@ -221,7 +221,14 @@ class Doc(elephant.doc.Doc):
 
         self.d["_temp"] = {}
 
-        commits = list(self.e.coll.commits.find({"file": self.d["_id"]}))
+        commits = list(elephant.commit.CommitLocal(
+                _["_id"],
+                _["time"],
+                _["user"],
+                _["parent"],
+                _["file"],
+                _["changes"],
+                ) for _ in self.e.coll.commits.find({"file": self.d["_id"]}))
 
         self.d["_temp"]["commits"] = commits
 

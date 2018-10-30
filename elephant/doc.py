@@ -62,7 +62,7 @@ class Doc:
                     logger.warning(f"{self!r} has not field '_temp.commits'")
 
                 for c in self.d["_temp"]["commits"]:
-                    if c["_id"] == commit_id:
+                    if c._id == commit_id:
                         return c
             
             return self.e.coll.commits.find_one({'_id': commit_id})
@@ -83,7 +83,7 @@ class Doc:
         while c0:
             yield c0
             
-            c0 = _find(c0["parent"])
+            c0 = _find(c0.parent)
 
 
 
