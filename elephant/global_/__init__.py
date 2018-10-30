@@ -104,9 +104,7 @@ class Engine(elephant.Engine):
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
     def _pipe_read_permission(self, user):
-        # TODO temporary
-        return
-        yield {'$match': {'_temp.commits[0].CommitGlobal[2]': user.d["_id"]}}
+        yield {'$match': {'_temp.commits.0.CommitGlobal.2': user.d["_id"]}}
 
     def pipe0(self, user):
         # for mongo aggregate
@@ -342,7 +340,6 @@ class Engine(elephant.Engine):
                 logging.error(crayons.red(f"pipe1: {pipe1}"))
                 logging.error(crayons.red(f"{self!r}: check failed for {d!r}: {e!r}"))
                 raise
-                #await d1.update_temp(self.h.root_user)
                 #await d1.check()
 
         return d1
@@ -375,7 +372,6 @@ class Engine(elephant.Engine):
             f["_temp"]["commits"] = commits1
 
             f1 = await self._factory(f)
-            #f1.update_temp()
 
             if not (await f1.has_read_permission(user)): continue
 

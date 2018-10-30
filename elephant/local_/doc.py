@@ -141,68 +141,6 @@ class Doc(elephant.doc.Doc):
     
                 print(res.modified_count)
 
-    async def creator(self):
-        if self.d.get('_root'):
-            logger.info("has field _root!")
-            pprint.pprint(self.d)
-            return None
-
-        self._assert_elephant()
-
-        my_id = bson.objectid.ObjectId("5b05b7a26c38a525cfd3e569")
-        my_user = _User()
-        my_user.d['_id'] = my_id
-
-        commit0 = next(await self.commits())
- 
-        # TODO move this to a migration
-        try:
-            pass
-        except StopIteration:
-            print(crayons.red('no commits'))
-
-            try:
-                commit1 = next(self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)]))
-                print('actually there are commits')
-                raise Exception()
-            except StopIteration:
-                pass
-
-            print(self.e)
-            item = aardvark.util.clean(self.d)
-            diffs = list(aardvark.diff({}, item))
-            commit_id = self.e._create_commit(self.d['_id'], None, diffs, my_user)
-            ref = 'master'
-            item['_elephant'] = {
-                    "ref": ref,
-                    "refs": {ref: commit_id},
-                    }
-            res = self.coll.files.update_one(
-                    {'_id': self.d['_id']}, {'$set': {'_elephant': item['_elephant']}})
-            return
-
-        if not commit0.user:
-            commit0 = self.e.coll.commits.find_one({'_id': commit0['_id']})
-            print(crayons.yellow('local: no user in commit'))
-            if 'user' not in commit0:
-                print(crayons.red('local: no user'))
-                pprint.pprint(commit0)
-                commit0['user'] = my_id
-                res = self.e.coll.commits.update_one({'_id': commit0['_id']}, 
-                        {'$set': {'user': commit0['user']}})
-                print(res.modified_count)
-                res = self.e.coll.commits.find_one({'_id': commit0['_id']})
-                pprint.pprint(res)
-                assert 'user' in res
-            else:
-                raise Exception()
-                self.update_temp(user)
-                self.put('master', None)
- 
-        user = commit0.user
-        assert user is not None
-        return await self.e.h.e_users._find_one_by_id("master", user)
- 
     def put(self, user):
         return self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
 
