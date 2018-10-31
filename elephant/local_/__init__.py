@@ -368,6 +368,10 @@ class Engine(elephant.Engine):
     async def find_one_by_id(self, user, ref, _id):
         return await self.find_one(user, ref, {"_id": _id})
 
+    async def find_one_by_ref(self, user, ref):
+        if not isinstance(ref, elephant.ref.DocRef): raise TypeError()
+        return await self.find_one_by_id(user, ref.ref, ref._id)
+
     async def find_one(self, user, ref, q):
         d = await self._find_one(ref, q)
 
