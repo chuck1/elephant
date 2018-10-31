@@ -394,9 +394,6 @@ class Engine(elephant.Engine):
             #if "_temp" not in d:
             #    raise Exception(f"document {d!r} has no _temp field")
 
-            print("_temp.commits[0].CommitGlobal[2]")
-            pprint.pprint(d["_temp"]["commits"][0]["CommitGlobal"][2])
-
             d1 = await self._factory(d)
 
             if check:

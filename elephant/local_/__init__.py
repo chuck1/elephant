@@ -195,9 +195,23 @@ class Engine(elephant.Engine):
         doc_new_0['_id'] = res.inserted_id
 
         o = await self._factory(doc_new_0)
-   
+  
+        await o.update_temp(user)
+
+        # check
         await o.check_0()
         await o.check()
+
+        # update database with temp
+        update = {"$set": {}}
+        update['$set']['_temp'] = await elephant.util.encode(
+                self.h, 
+                user, 
+                elephant.EncodeMode.DATABASE,
+                o.d["_temp"])
+
+        res1 = self.coll.files.update_one({'_id': res.inserted_id}, update)
+        assert res1.modified_count == 1
 
         return o 
 
@@ -292,7 +306,10 @@ class Engine(elephant.Engine):
 
         update['$set']['_elephant'] = el1
 
-        update['$set']['_temp'] = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE,
+        update['$set']['_temp'] = await elephant.util.encode(
+                self.h, 
+                user, 
+                elephant.EncodeMode.DATABASE,
                 doc_old_0.d["_temp"])
 
         elephant.check.check(update, bson.json_util.dumps)
