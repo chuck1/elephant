@@ -478,6 +478,8 @@ class Engine(elephant.Engine):
         assert isinstance(pipe0, list)
         assert isinstance(pipe1, list)
 
+        query = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, query)
+
         async for d in self._find(query, pipe0, pipe1):
 
             if await d.has_read_permission(user):
