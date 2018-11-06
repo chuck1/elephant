@@ -75,6 +75,8 @@ class Engine(elephant.Engine):
         # the commit graph for the docs in this collection
         self.commit_graph = nx.DiGraph()
 
+        self._doc_class = elephant.local_.doc.Doc
+
     async def create_indices(self):
         pass
 
@@ -354,6 +356,8 @@ class Engine(elephant.Engine):
         # assumes that c_id_0 is older than c_id_1
 
         c_0 = self.coll.commits.find_one({"_id": c_id_0})
+
+        assert c_0 is not None
   
         path = [c_0]
 
@@ -402,6 +406,8 @@ class Engine(elephant.Engine):
     async def _find_one(self, ref, filt={}):
 
         f = self.coll.files.find_one(filt)
+
+        logger.info(f'f = {f!r}')
 
         if f is None: return None
 
