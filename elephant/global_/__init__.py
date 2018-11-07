@@ -79,13 +79,15 @@ class Engine(elephant.Engine):
     Commit its will be managed by elephant.
 
     """
-    def __init__(self, coll, ref_name, e_queries):
+    def __init__(self, coll, ref_name, e_queries=None):
         self.coll = coll
 
         self.e_queries = e_queries
 
         self.ref_name = ref_name
         self._cache = {}
+
+        self._doc_class = elephant.global_.doc.Doc
 
     async def pre_put_new(self, _): return _
 
