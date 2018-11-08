@@ -394,6 +394,9 @@ class Engine(elephant.Engine):
         return await self.find_one_by_id(user, ref.ref, ref._id)
 
     async def find_one(self, user, ref, q):
+
+        q = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, q)
+
         d = await self._find_one(ref, q)
 
         if d is None: return 
