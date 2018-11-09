@@ -410,7 +410,7 @@ class Engine(elephant.Engine):
 
         f = self.coll.files.find_one(filt)
 
-        logger.info(f'f = {f!r}')
+        logger.debug(f'f = {f!r}')
 
         if f is None: return None
 
