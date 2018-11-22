@@ -1,4 +1,5 @@
 import logging
+import pprint
 import aardvark
 import bson
 import elephant.util
@@ -40,6 +41,9 @@ class Doc:
         self.is_subobject = is_subobject
 
     async def creator_id(self):
+        if "_temp" not in self.d:
+            pprint.pprint(self.d)
+            raise Exception("no _temp")
         return self.d["_temp"]["commits"][0].user
 
     async def creator(self):

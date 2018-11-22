@@ -56,7 +56,16 @@ class Doc(elephant.doc.Doc):
         pass
 
     async def check(self):
-        assert await self.creator()
+        creator = await self.creator()
+        assert creator
+
+        self.d["_temp"]
+
+        self.d["_temp"]["commits"]
+
+        # used in the read_permissions pipe
+        self.d["_temp"]["commits"][0].user
+
 
     async def has_read_permission(self, user0):
         if '_root' in self.d: 
@@ -154,6 +163,7 @@ class Doc(elephant.doc.Doc):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
+        print(crayons.red("local doc update temp"))
 
         self.d["_temp"] = {}
 

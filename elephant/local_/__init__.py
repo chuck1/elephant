@@ -401,6 +401,11 @@ class Engine(elephant.Engine):
 
         if d is None: return 
 
+        # needed if reference is to older version. see second method in _find_one function
+        await d.update_temp(user)
+
+        #await d.check()
+
         if not await d.has_read_permission(user):
             raise Exception("Access Denied")
 
@@ -455,7 +460,7 @@ class Engine(elephant.Engine):
             a['_elephant']['refs'] = f['_elephant']['refs']
 
             f2 = await self._factory(a)
-  
+
             return f2
 
     def pipe0(self, user):
