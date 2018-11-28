@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 class Temp: pass
 
 class Doc(elephant.doc.Doc):
-    def __init__(self, e, d, _d, *args):
-        super().__init__(e, d, _d, *args)
+    def __init__(self, e, d, _d, *args, **kwargs):
+        super().__init__(e, d, _d, *args, **kwargs)
         assert isinstance(d, dict)
         self.temp = Temp()
 

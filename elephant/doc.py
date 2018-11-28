@@ -1,5 +1,7 @@
+import copy
 import logging
 import pprint
+
 import aardvark
 import bson
 import elephant.util
@@ -39,6 +41,22 @@ class Doc:
         self.d = d
         self._d = _d
         self.is_subobject = is_subobject
+
+    def __copy__(self):
+        return self.__class__(
+                self.e, 
+                copy.deepcopy(self.d),
+                copy.deepcopy(self._d),
+                is_subobject=self.is_subobject,
+                )
+
+    def __deepcopy__(self, memo):
+        return self.__class__(
+                self.e, 
+                copy.deepcopy(self.d, memo),
+                copy.deepcopy(self._d, memo),
+                is_subobject=self.is_subobject,
+                )
 
     async def creator_id(self):
         if "_temp" not in self.d:
