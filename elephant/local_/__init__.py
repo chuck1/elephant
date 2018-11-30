@@ -217,24 +217,26 @@ class Engine(elephant.Engine):
 
         return o 
 
-    async def put(self, user, ref, _id, doc_new_0):
+    async def put(self, user, ref, _id, data_new_0):
         if _id is None:
-            return await self._put_new(user, ref, doc_new_0)
+            return await self._put_new(user, ref, data_new_0)
 
-        assert isinstance(doc_new_0, dict)
+        assert isinstance(data_new_0, dict)
 
-        doc_new_0 = aardvark.util.clean(doc_new_0)
+        data_new_0 = aardvark.util.clean(data_new_0)
 
-        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_0)
+        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, data_new_0)
 
         doc_old_0 = await self._find_one_by_id(ref, _id)
+
+        #await doc_old_0.check()
 
         if doc_old_0 is None:
             raise Exception(f"Error updating document. Document not found ref = {ref} id = {_id}")
 
         # check before any database operations
         doc_new_1 = copy.deepcopy(doc_old_0.d)
-        doc_new_1.update(doc_new_0)
+        doc_new_1.update(data_new_0)
         f0 = await self._factory(doc_new_1)
         await f0.check_0()
 
@@ -269,23 +271,36 @@ class Engine(elephant.Engine):
 
         #doc_old_0.d.update(_)
 
-        doc_old_0.d.update(doc_new_0)
+        doc_old_0.d.update(data_new_0)
+
+        # make sure new data passes checks
+        await doc_old_0.check()
 
         # update temp
 
         temp_old = dict(doc_old_0.d.get("_temp", {}))
 
-        await doc_old_0.update_temp(user)
-
         if not diffs:
             logger.info("diffs is empty")
 
-            if doc_old_0.d.get("_temp", {}) != temp_old:
-                logger.info('document unchanged but temp change')
-                update = {'$set': {"_temp": await doc_old_0.temp_to_array(user)}}
-                res = self.coll.files.update_one({'_id': _id}, update)
-            
-            return doc_old_0
+            try:
+                await doc_old_0.update_temp(user)
+             
+            except Exception as e:
+                logger.error(f"failed to update_temp for previous version: {e!r}")
+                raise
+                
+                #update = {'$set': {"_temp": await doc_old_0.temp_to_array(user)}}
+                #res = self.coll.files.update_one({'_id': _id}, update)
+
+            else:
+
+                if doc_old_0.d.get("_temp", {}) != temp_old:
+                    logger.info('document unchanged but temp change')
+                    update = {'$set': {"_temp": await doc_old_0.temp_to_array(user)}}
+                    res = self.coll.files.update_one({'_id': _id}, update)
+                
+                return doc_old_0
 
 
         # create commit
