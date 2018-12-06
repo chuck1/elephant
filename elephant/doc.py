@@ -59,9 +59,15 @@ class Doc:
                 )
 
     async def creator_id(self):
+
         if "_temp" not in self.d:
+
+            commits = await self.temp_commits()
+            return commits[0].user
+
             pprint.pprint(self.d)
             raise Exception("no _temp")
+
         return self.d["_temp"]["commits"][0].user
 
     async def creator(self):
@@ -147,7 +153,9 @@ class Doc:
         yield
         return
  
-
+    def clear_temp(self):
+        if "_temp" in self.d:
+            del self.d["_temp"]
 
 
 

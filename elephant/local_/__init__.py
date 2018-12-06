@@ -408,7 +408,7 @@ class Engine(elephant.Engine):
         if not isinstance(ref, elephant.ref.DocRef): raise TypeError()
         return await self.find_one_by_id(user, ref.ref, ref._id)
 
-    async def find_one(self, user, ref, q):
+    async def find_one(self, user, ref, q, temp=True):
 
         q = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, q)
 
@@ -417,7 +417,11 @@ class Engine(elephant.Engine):
         if d is None: return 
 
         # needed if reference is to older version. see second method in _find_one function
-        await d.update_temp(user)
+        # but have option to not get temp if this is to be a subobject
+        if temp:
+            await d.update_temp(user)
+        else:
+            d.clear_temp()
 
         #await d.check()
 
