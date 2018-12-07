@@ -386,6 +386,10 @@ class Engine(elephant.Engine):
             ]
         pipe = pipe0 + pipe + pipe1
 
+        logger.info('pipe')
+        for p in pipe:
+            logger.info(f'  {p!r}')
+
         pipe = await elephant.util.encode(self.h, None, elephant.EncodeMode.DATABASE, pipe)
 
         with elephant.util.stopwatch(logger_mongo.debug, "aggregate "):
