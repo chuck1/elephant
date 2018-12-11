@@ -163,8 +163,6 @@ class Doc(elephant.doc.Doc):
         """
         update self.d["_temp"] with calculated values to be stored in the database for querying
         """
-        print(crayons.red("local doc update temp"))
-
         self.d["_temp"] = {}
 
         self.d["_temp"]["commits"] = await self.temp_commits()

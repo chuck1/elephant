@@ -174,7 +174,7 @@ class Engine(elephant.Engine):
 
         commit_id = self._create_commit(None, None, diffs, user)
 
-        logger.info(f"new document commit: {commit_id}")
+        logger.debug(f"new document commit: {commit_id}")
 
         el = {
                 "ref": ref,
@@ -500,7 +500,9 @@ class Engine(elephant.Engine):
         for _ in pipe:
             logger.debug(f'  {_!r}')
 
-        with elephant.util.stopwatch(logger_mongo.info, "aggregate "):
+        pipe = await elephant.util.encode(self.h, None, elephant.EncodeMode.DATABASE, pipe)
+
+        with elephant.util.stopwatch(logger_mongo.debug, "aggregate "):
             c = self.coll.files.aggregate(pipe)
 
         for d in c:
