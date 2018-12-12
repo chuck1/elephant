@@ -273,6 +273,9 @@ class Engine(elephant.Engine):
 
         doc_old_0.d.update(data_new_0)
 
+        # might not have _temp field, next line would fail if not
+        await doc_old_0.update_temp(user)
+
         # make sure new data passes checks
         await doc_old_0.check()
 
