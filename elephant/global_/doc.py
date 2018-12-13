@@ -2,6 +2,7 @@ import time
 import logging
 
 import elephant.doc
+import otter
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,9 @@ class Doc(elephant.doc.Doc):
         pass
 
     async def check_0(self):
-        pass
+        for tag in self.d.get("tags", []):
+            if not isinstance(tag, otter.subobjects.tag.Tag):
+                raise TypeError(f"expected subobject.tag.Tag not {type(tag)}")
 
     async def check(self):
         creator = await self.creator()
