@@ -2,7 +2,7 @@ import time
 import logging
 
 import elephant.doc
-import otter
+import otter.subobjects
 
 logger = logging.getLogger(__name__)
 
