@@ -106,13 +106,17 @@ class Engine(elephant.Engine):
         logger.info(f'{self.coll.files.name:34} deleted: {res.deleted_count}')
 
     def _pipe_read_permission(self, user):
+        # TODO does not work for root_user
         yield {'$match': {'_temp.commits.0.CommitGlobal.2': user.d["_id"]}}
+
+    def pipe0_no_permissions(self, user):
+        yield {"$match": {"hide": {"$not": {"$eq": True}}}}
 
     def pipe0(self, user):
         # for mongo aggregate
         
-        yield {"$match": {"hide": {"$not": {"$eq": True}}}}
-
+        for _ in self.pipe0_no_permissions(user): yield _
+        
         for _ in self._pipe_read_permission(user): yield _
 
     def pipe1(self, sort=None):
@@ -326,6 +330,10 @@ class Engine(elephant.Engine):
 
         pipe = pipe0 + [{'$match': query}] + pipe1
 
+        logger.info("pipe")
+        for stage in pipe:
+            logger.info(f"    {stage}")
+
         c = self.coll.files.aggregate(pipe)
 
         try:
@@ -352,7 +360,7 @@ class Engine(elephant.Engine):
 
     async def find_one(self, user, query, pipe0=None, pipe1=[], check=True):
 
-        if pipe0 is None: pipe0 = list(self.pipe0(user))
+        if pipe0 is None: pipe0 = list(self.pipe0_no_permissions(user))
 
         query = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, query)
 
@@ -360,7 +368,8 @@ class Engine(elephant.Engine):
 
         if f is None: return None
 
-        if not (await f.has_read_permission(user)): raise elephant.util.AccessDenied()
+        if not (await f.has_read_permission(user)):
+            raise elephant.util.AccessDenied()
 
         return f
 
