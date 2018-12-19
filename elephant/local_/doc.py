@@ -153,11 +153,9 @@ class Doc(elephant.doc.Doc):
     def put(self, user):
         return self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
 
-    #def commits(self):
-    #    return self.e.coll.commits.find({"file": self.d["_id"]}).sort([('time', 1)])
-       
-    async def delete(self):
-        self.e.coll.files.delete_one({'_id': self.d["_id"]})
+    async def delete(self, user):
+        self.d["_deleted"] = True
+        await self.put(user)
 
     async def update_temp(self, user):
         """

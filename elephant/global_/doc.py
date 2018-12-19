@@ -87,8 +87,9 @@ class Doc(elephant.doc.Doc):
                 _["files"],
                 ) for _ in self.e.coll.commits.aggregate(pipe))
 
-    async def delete(self):
-        self.e.coll.files.delete_one({'_id': self.d["_id"]})
+    async def delete(self, user):
+        self.d["_deleted"] = True
+        await self.put(user)
 
     def update(self, updates):
         self.e.coll.files.update_one({"_id": self.d['_id']}, updates)
