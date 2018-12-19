@@ -435,6 +435,10 @@ class Engine(elephant.Engine):
 
     async def _find_one(self, ref, filt={}):
 
+        # hide hidden docs
+        if "hide" in filt: raise Exception('query contains reserved field "hide"')
+        filt["hide"] = {"$not": {"$eq": True}}
+
         f = self.coll.files.find_one(filt)
 
         logger.debug(f'f = {f!r}')
@@ -448,7 +452,7 @@ class Engine(elephant.Engine):
 
         self._assert_elephant(f, f0)
         
-        if (ref == f['_elephant']['ref']) or (ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]):
+        if (ref is None) or (ref == f['_elephant']['ref']) or (ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]):
             
             #commits = list(self.coll.commits.find({"file": f["_id"]}))
             #f["_temp"] = {}
@@ -486,8 +490,7 @@ class Engine(elephant.Engine):
             return f2
 
     def pipe0(self, user):
-        return 
-        yield
+        yield {"$match": {"hide": {"$not": {"$eq": True}}}}
 
     def pipe1(self, sort=None):
         return 

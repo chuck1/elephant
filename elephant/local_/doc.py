@@ -154,7 +154,7 @@ class Doc(elephant.doc.Doc):
         return self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
 
     async def delete(self, user):
-        self.d["_deleted"] = True
+        self.d["hide"] = True
         await self.put(user)
 
     async def update_temp(self, user):

@@ -88,7 +88,7 @@ class Doc(elephant.doc.Doc):
                 ) for _ in self.e.coll.commits.aggregate(pipe))
 
     async def delete(self, user):
-        self.d["_deleted"] = True
+        self.d["hide"] = True
         await self.put(user)
 
     def update(self, updates):

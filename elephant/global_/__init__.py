@@ -111,6 +111,8 @@ class Engine(elephant.Engine):
     def pipe0(self, user):
         # for mongo aggregate
         
+        yield {"$match": {"hide": {"$not": {"$eq": True}}}}
+
         for _ in self._pipe_read_permission(user): yield _
 
     def pipe1(self, sort=None):
@@ -318,6 +320,8 @@ class Engine(elephant.Engine):
     async def _find_one(self, query, pipe0=[], pipe1=[], check=True):
         """
         do not check permissions
+
+        pipe0 - None or line of aggregate stages. If None, self.pipe0() will be used.
         """
 
         pipe = pipe0 + [{'$match': query}] + pipe1
@@ -346,11 +350,13 @@ class Engine(elephant.Engine):
 
         return d1
 
-    async def find_one(self, user, query, pipe0=[], pipe1=[], check=True):
+    async def find_one(self, user, query, pipe0=None, pipe1=[], check=True):
+
+        if pipe0 is None: pipe0 = list(self.pipe0(user))
 
         query = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, query)
 
-        f = await self._find_one(query, check=check)
+        f = await self._find_one(query, pipe0=pipe0, check=check)
 
         if f is None: return None
 
