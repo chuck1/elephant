@@ -113,8 +113,7 @@ class Engine(elephant.Engine):
         yield {"$match": {"hide": {"$not": {"$eq": True}}}}
 
     def pipe0(self, user):
-        # for mongo aggregate
-        
+
         for _ in self.pipe0_no_permissions(user): yield _
         
         for _ in self._pipe_read_permission(user): yield _
@@ -394,7 +393,9 @@ class Engine(elephant.Engine):
 
             yield f1
 
-    async def _find(self, query, pipe0=[], pipe1=[], check=True):
+    async def _find(self, query, pipe0=None, pipe1=[], check=True):
+
+        if pipe0 is None: pipe0 = list(self.pipe0_no_permissions(None))
 
         pipe = [
             {'$match': query},
