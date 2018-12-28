@@ -387,10 +387,6 @@ class Engine(elephant.Engine):
 
         path = list(reversed(path))
 
-        print('path')
-        for c in path:
-            pprint.pprint(c)
-
         return path
 
     async def apply_path(self, path, a):

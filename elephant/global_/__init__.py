@@ -329,9 +329,9 @@ class Engine(elephant.Engine):
 
         pipe = pipe0 + [{'$match': query}] + pipe1
 
-        logger.info("pipe")
+        logger.debug("pipe")
         for stage in pipe:
-            logger.info(f"    {stage}")
+            logger.debug(f"    {stage}")
 
         c = self.coll.files.aggregate(pipe)
 
@@ -402,9 +402,9 @@ class Engine(elephant.Engine):
             ]
         pipe = pipe0 + pipe + pipe1
 
-        logger.info('pipe')
+        logger.debug('pipe')
         for p in pipe:
-            logger.info(f'  {p!r}')
+            logger.debug(f'  {p!r}')
 
         pipe = await elephant.util.encode(self.h, None, elephant.EncodeMode.DATABASE, pipe)
 
@@ -425,11 +425,12 @@ class Engine(elephant.Engine):
 
     async def find(self, user, query, pipe0=[], pipe1=[], check=True):
         
-        logger.info(f'user = {user.d["_id"]!r}')
+        logger.debug(f'user = {user.d["_id"]!r}')
 
         async for d in self._find(query, pipe0, pipe1, check=check):
             b = user.d["_id"] == d._d["_temp"]["commits"][0]["CommitGlobal"][2]
-            logger.info(f"user is creator = {b}")
+
+            logger.debug(f"user is creator = {b}")
 
             if await d.has_read_permission(user):
                 yield d
