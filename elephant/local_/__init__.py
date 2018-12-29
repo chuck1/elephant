@@ -485,14 +485,20 @@ class Engine(elephant.Engine):
 
             return f2
 
-    def pipe0(self, user):
+    def pipe0_no_permissions(self, user):
         yield {"$match": {"hide": {"$not": {"$eq": True}}}}
+
+    def pipe0(self, user):
+        yield from self.pipe0_no_permissions(user)
 
     def pipe1(self, sort=None):
         return 
         yield
 
-    async def _find(self, query={}, pipe0=[], pipe1=[], check=True):
+    async def _find(self, query={}, pipe0=None, pipe1=[], check=True):
+
+        if pipe0 is None: pipe0 = list(self.pipe0_no_permissions(None))
+
         assert isinstance(pipe0, list)
         assert isinstance(pipe1, list)
 
