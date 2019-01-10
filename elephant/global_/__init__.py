@@ -236,7 +236,7 @@ class Engine(elephant.Engine):
             '_temp':     await f.temp_to_array(user),
             }}
 
-        logger.info(f'update = {update}')
+        logger.debug(f'update = {update}')
 
         res = self.coll.files.update_one({'_id': file_id}, update)
 
@@ -299,8 +299,8 @@ class Engine(elephant.Engine):
         update['$set']['_elephant.commit_id'] = commit["_id"]
         update['$set']['_temp'] = await obj_new.temp_to_array(user)
 
-        logger.info("update:")
-        logger.info(repr(update))
+        logger.debug("update:")
+        logger.debug(repr(update))
 
         res = self.coll.files.update_one({'_id': file_id}, update)
 
