@@ -10,6 +10,8 @@ setup(name='elephant',
         license='MIT',
         packages=[
             'elephant',
+            'elephant.global_',
+            'elephant.local_',
             ],
         zip_safe=False,
         )
