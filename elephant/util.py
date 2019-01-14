@@ -17,7 +17,12 @@ def stopwatch(p, s):
 async def encode(h, user, mode, o):
      
     if hasattr(o, "__encode__"):
-        a = await o.__encode__(h, user, mode)
+        try:
+            a = await o.__encode__(h, user, mode)
+        except Exception as e:
+            print(repr(e))
+            print(repr(o))
+            raise
 
         try:
             bson.json_util.dumps(a)
