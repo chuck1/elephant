@@ -295,7 +295,8 @@ class Engine(elephant.Engine):
             raise elephant.util.AccessDenied()
 
         commit = self._create_commit([self.file_changes(file_id, diffs)], user)
-        
+
+
         update = aardvark.util.diffs_to_update(diffs, doc_new_encoded)
 
         if '$set' not in update:
@@ -312,6 +313,8 @@ class Engine(elephant.Engine):
         self._cache[file_id] = obj_new
 
         await obj_new.check()
+
+        await obj_new.update_post(user, diffs)
 
         return obj_new
 

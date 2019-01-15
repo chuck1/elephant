@@ -1,6 +1,6 @@
 import time
 import logging
-
+import async_patterns
 import elephant.doc
 import otter.subobjects
 
@@ -13,12 +13,31 @@ class Doc(elephant.doc.Doc):
         super().__init__(e, d, _d, *args, **kwargs)
         assert isinstance(d, dict)
         self.temp = Temp()
+        self.__signals = dict()
 
     @classmethod
     async def get_test_document(cls, b0={}):
         b = {"test_field": str(time.time())}
         b.update(b0)
         return b
+
+    def get_signal(self, k):
+        """
+        get the signal object assocaited with the key `k` or create a new one
+        """
+        if k not in self.__signals:
+            self.__signals[k] = async_patterns.Callback()
+        
+        return self.__signals[k]
+
+    async def update_post(self, user, diffs, ):
+
+        for diff in diffs:
+            k = diff.address.lines[0].key
+            
+            s = self.get_signal(k)
+
+            await s.acall(diff)
 
     def freeze(self):
         return elephant.ref.DocRef(self.d["_id"])
