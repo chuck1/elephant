@@ -69,6 +69,7 @@ class Engine(elephant.Engine):
 
     """
     def __init__(self, coll, e_queries=None):
+        super().__init__()
         self.coll = coll
         self.e_queries = e_queries
 
@@ -164,7 +165,7 @@ class Engine(elephant.Engine):
         doc_new_0 = aardvark.util.clean(doc_new_0)
 
         # check before any database operations
-        f0 = await self._factory(copy.deepcopy(doc_new_0))
+        f0 = await self._factory(copy.deepcopy(doc_new_0), False)
         await f0.check_0()
 
         doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_0)
@@ -196,7 +197,7 @@ class Engine(elephant.Engine):
 
         doc_new_0['_id'] = res.inserted_id
 
-        o = await self._factory(doc_new_0)
+        o = await self._factory(doc_new_0, False)
   
         await o.update_temp(user)
 
@@ -441,7 +442,7 @@ class Engine(elephant.Engine):
 
         if f is None: return None
 
-        f0 = await self._factory(f)
+        f0 = await self._factory(f, False)
  
         # TODO do we really need this?
         if f.get('_root', False): return f0

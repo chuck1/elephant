@@ -13,7 +13,6 @@ class Doc(elephant.doc.Doc):
         super().__init__(e, d, _d, *args, **kwargs)
         assert isinstance(d, dict)
         self.temp = Temp()
-        self.__signals = dict()
 
     @classmethod
     async def get_test_document(cls, b0={}):
@@ -21,23 +20,29 @@ class Doc(elephant.doc.Doc):
         b.update(b0)
         return b
 
-    def get_signal(self, k):
-        """
-        get the signal object assocaited with the key `k` or create a new one
-        """
-        if k not in self.__signals:
-            self.__signals[k] = async_patterns.Callback()
-        
-        return self.__signals[k]
-
     async def update_post(self, user, diffs, ):
 
-        for diff in diffs:
-            k = diff.address.lines[0].key
-            
-            s = self.get_signal(k)
+        # TODO implement per key
+        #for diff in diffs:
+        #    k = diff.address.lines[0].key
 
-            await s.acall(diff)
+        # search the database for docs that list this as a trigger
+            
+        # TODO just do tasks for now but should be ALL engines
+
+        query = {"_temp.listeners": {"$elemMatch": {"Listener.0": self.freeze()}}}
+        logger.info(f'docs listening to {self!r}:')
+        async for doc in self.e.find(user, query, check=False):
+            logger.info(f'  {doc}')
+            await doc.put(user)
+
+    async def listening_to_self(self, user):
+        query = {"_temp.listeners": {"$elemMatch": {"Listener.0": self.freeze()}}}
+        #query = {"_temp.listeners": {"$elemMatch": {"Listener": [self.freeze()]}}}
+        #query = {"_temp.listeners": {"$elemMatch": {"Listener": {"$exists": True}}}}
+        #query = {"_temp.listeners": {"$exists": True}}
+        async for doc in self.e.find(user, query):
+            yield doc
 
     def freeze(self):
         return elephant.ref.DocRef(self.d["_id"])
@@ -114,7 +119,15 @@ class Doc(elephant.doc.Doc):
         self.e.coll.files.update_one({"_id": self.d['_id']}, updates)
 
     async def put(self, user=None):
-        return await self.e.put(user, self.d["_id"], self.d)
+
+        # temp needs to reflect current state
+        #await self.update_temp(user)
+
+        ret = await self.e.put(user, self.d["_id"], self.d)
+      
+        assert ret is self
+ 
+        return ret
 
     def _commits(self, ref):
         def _find(commit_id):
@@ -191,5 +204,7 @@ class Doc(elephant.doc.Doc):
     async def temp_messages(self):
         return
         yield
- 
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.d["_id"]})'
 

@@ -80,12 +80,13 @@ class Engine(elephant.Engine):
 
     """
     def __init__(self, coll, ref_name, e_queries=None):
+        super().__init__()
+     
         self.coll = coll
 
         self.e_queries = e_queries
 
         self.ref_name = ref_name
-        self._cache = {}
 
         self._doc_class = elephant.global_.doc.Doc
 
@@ -206,7 +207,7 @@ class Engine(elephant.Engine):
         doc_new_0 = aardvark.util.clean(doc_new_0)
 
         # check before any database operations
-        f0 = await self._factory(copy.deepcopy(doc_new_0))
+        f0 = await self._factory(copy.deepcopy(doc_new_0), False)
         await f0.check_0()
 
         # need file id to create commit
@@ -227,7 +228,7 @@ class Engine(elephant.Engine):
         item1 = dict(doc_new_0)
         item1["_id"] = file_id
 
-        f = await self._factory(item1)
+        f = await self._factory(item1, False)
 
         await f.update_temp(user)
 
@@ -248,6 +249,24 @@ class Engine(elephant.Engine):
 
     async def put(self, user, file_id, doc_new_0):
 
+
+
+
+        def print_temp(temp):
+            for k, v in temp.items():
+                if k in ['due_auto', 'listeners']:
+                    logger.info(f'  {k} = {v}')
+                elif k in ['downstream', 'upstream']:
+                    logger.info(f'  {k} len = {len(v)}')
+                else:
+                    logger.info(f'  {k}')
+
+
+
+
+
+
+
         #doc_new_0 = await elephant.util.encode(doc_new_0)
 
         if file_id is None:
@@ -256,11 +275,12 @@ class Engine(elephant.Engine):
         doc_new_clean = aardvark.util.clean(doc_new_0)
 
         # check before any database operations
-        _ = await self._factory(copy.deepcopy(doc_new_clean))
+        _ = await self._factory(copy.deepcopy(doc_new_clean), False)
         await _.check_0()
 
         # get existing document
-        obj_old = await self._find_one_by_id(file_id, check=False)
+        # skip cache so that a new object is created. otherwise there could be circular logic
+        obj_old = await self._find_one_by_id(file_id, check=False, skip_cache=True, )
 
         doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_clean)
 
@@ -272,18 +292,43 @@ class Engine(elephant.Engine):
         # construct new object
         _ = copy.deepcopy(obj_old._d)
         _.update(doc_new_encoded)
-        obj_new = await self._factory(_)
+        obj_new = await self._factory(_, False)
 
+ 
+        logger.info(f'obj_new update_temp {obj_new}')
         await obj_new.update_temp(user)
+        #await obj_new.due_auto(user)
+
+
+        temp_0 = obj_old.d.get("_temp", {})
+        temp_1 = obj_new.d.get("_temp", {})
+        diffs_1 = list(aardvark.diff(temp_0, temp_1))
+
+        logger.info('diffs in temp')
+        for diff in diffs_1:
+            logger.info(f'  {diff.address}')
+
+        logger.info('temp_0')
+        print_temp(temp_0)
+
+        logger.info('temp_1')
+        print_temp(temp_1)
 
         if not diffs:
 
-            if obj_old.d.get("_temp", {}) != obj_new.d.get("_temp", {}):
+            #logger.info("change in listeners")
+            #logger.info(obj_old.d["_temp"]["listeners"])
+            #logger.info(obj_new.d["_temp"]["listeners"])
+
+
+
+            if temp_0 != temp_1:
 
                 y = await obj_new.temp_to_array(user)
 
                 logger.info(f'update temp')
-                logger.info(repr(y))
+                #logger.info(repr(y))
+
 
                 update = {'$set': {"_temp": y}}
 
@@ -310,7 +355,7 @@ class Engine(elephant.Engine):
 
         res = self.coll.files.update_one({'_id': file_id}, update)
 
-        self._cache[file_id] = obj_new
+        #self._cache[file_id] = obj_new
 
         await obj_new.check()
 
@@ -318,21 +363,22 @@ class Engine(elephant.Engine):
 
         return obj_new
 
-    async def _find_one_by_id(self, _id, check=True):
-        return await self._find_one({"_id": _id}, check=check)
+    async def _find_one_by_id(self, _id, check=True, encoded=False, skip_cache=False, ):
+        return await self._find_one({"_id": _id}, check=check, skip_cache=skip_cache, )
 
-    async def find_one_by_id(self, user, _id, check=True):
+    async def find_one_by_id(self, user, _id, check=True, encoded=False, ):
         return await self.find_one(user, {"_id": _id}, check=check)
 
-    async def find_one_by_ref(self, user, ref):
+    async def find_one_by_ref(self, user, ref, encoded=False, ):
         if not isinstance(ref, elephant.ref.DocRef): raise TypeError()
         return await self.find_one_by_id(user, ref._id)
 
-    async def _find_one(self, query, pipe0=[], pipe1=[], check=True):
+    async def _find_one(self, query, pipe0=[], pipe1=[], check=True, encoded=False, skip_cache=False, ):
         """
         do not check permissions
 
         pipe0 - None or line of aggregate stages. If None, self.pipe0() will be used.
+        encoded - bool - return the encoded data. directly from the database.
         """
 
         pipe = pipe0 + [{'$match': query}] + pipe1
@@ -348,7 +394,10 @@ class Engine(elephant.Engine):
         except StopIteration:
             return None
 
-        d1 = await self._factory(d)
+        if encoded:
+            return d
+
+        d1 = await self._factory(d, False, skip_cache=skip_cache, )
 
         assert d1 is not None
 
@@ -365,7 +414,7 @@ class Engine(elephant.Engine):
 
         return d1
 
-    async def find_one(self, user, query, pipe0=None, pipe1=[], check=True):
+    async def find_one(self, user, query, pipe0=None, pipe1=[], check=True, encoded=False, ):
 
         if pipe0 is None: pipe0 = list(self.pipe0_no_permissions(user))
 
@@ -427,7 +476,7 @@ class Engine(elephant.Engine):
             #if "_temp" not in d:
             #    raise Exception(f"document {d!r} has no _temp field")
 
-            d1 = await self._factory(d)
+            d1 = await self._factory(d, False)
 
             if check:
                 await d1.check()

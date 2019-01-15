@@ -55,7 +55,7 @@ class Doc:
                 self.e, 
                 copy.deepcopy(self.d, memo),
                 copy.deepcopy(self._d, memo),
-                is_subobject=self.is_subobject,
+                self.is_subobject,
                 )
 
     async def creator_id(self):
