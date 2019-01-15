@@ -280,7 +280,12 @@ class Engine(elephant.Engine):
 
             if obj_old.d.get("_temp", {}) != obj_new.d.get("_temp", {}):
 
-                update = {'$set': {"_temp": await obj_new.temp_to_array(user)}}
+                y = await obj_new.temp_to_array(user)
+
+                logger.info(f'update temp')
+                logger.info(repr(y))
+
+                update = {'$set': {"_temp": y}}
 
                 res = self.coll.files.update_one({'_id': file_id}, update)
             
