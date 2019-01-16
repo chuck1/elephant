@@ -22,7 +22,6 @@ class Engine:
         # a cache of document objects
         self._cache = {}
 
-
     async def _factory(self, encoded, is_subobject, *args, skip_cache=False, ):
        
         assert isinstance(encoded, dict)

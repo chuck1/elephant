@@ -238,7 +238,7 @@ class Engine(elephant.Engine):
         # check before any database operations
         doc_new_1 = copy.deepcopy(doc_old_0.d)
         doc_new_1.update(data_new_0)
-        f0 = await self._factory(doc_new_1)
+        f0 = await self._factory(doc_new_1, False)
         await f0.check_0()
 
         # check permissions
@@ -432,15 +432,26 @@ class Engine(elephant.Engine):
 
     async def _find_one(self, ref, filt={}):
 
+        breakpoint()
+
         # hide hidden docs
         if "hide" in filt: raise Exception('query contains reserved field "hide"')
         filt["hide"] = {"$not": {"$eq": True}}
+
+        logger.info('query')
+        for line in elephant.util.lines(pprint.pprint, filt):
+            logger.info(f'  {line}')
 
         f = self.coll.files.find_one(filt)
 
         logger.debug(f'f = {f!r}')
 
         if f is None: return None
+
+        logger.info('encoded')
+        for line in elephant.util.lines(pprint.pprint, f):
+            logger.info(f'  {line}')
+        
 
         f0 = await self._factory(f, False)
  
@@ -450,6 +461,8 @@ class Engine(elephant.Engine):
         self._assert_elephant(f, f0)
         
         if (ref is None) or (ref == f['_elephant']['ref']) or (ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]):
+
+            logger.info('ref matches. return')
             
             #commits = list(self.coll.commits.find({"file": f["_id"]}))
             #f["_temp"] = {}
@@ -516,7 +529,7 @@ class Engine(elephant.Engine):
 
         for d in c:
 
-            yield await self._factory(d)
+            yield await self._factory(d, False)
 
     async def find(self, user, query, pipe0=[], pipe1=[]):
         assert isinstance(pipe0, list)

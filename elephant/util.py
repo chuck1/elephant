@@ -1,8 +1,21 @@
 import contextlib
+import io
 import pprint
 import time
 
 import bson.json_util
+
+def lines(func, *args):
+
+    f = io.StringIO()
+
+    with contextlib.redirect_stdout(f):
+        func(*args)
+
+    s = f.getvalue()
+
+    for l in s.split('\n'):
+        yield l
 
 class AccessDenied(Exception):
     pass
