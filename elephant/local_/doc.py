@@ -150,12 +150,18 @@ class Doc(elephant.doc.Doc):
     
                 print(res.modified_count)
 
-    def put(self, user):
-        return self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
+    async def put(self, user):
+        ret = await self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
+        assert ret is self
+        return ret
 
     async def delete(self, user):
         self.d["hide"] = True
         await self.put(user)
+
+    async def update_stored_temp(self, user):
+        update = {'$set': {"_temp": await self.temp_to_array(user)}}
+        res = self.e.coll.files.update_one({'_id': self.d["_id"]}, update)
 
     async def update_temp(self, user):
         """

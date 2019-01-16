@@ -224,11 +224,11 @@ class Engine(elephant.Engine):
 
         assert isinstance(data_new_0, dict)
 
-        data_new_0 = aardvark.util.clean(data_new_0)
+        data_new_clean = aardvark.util.clean(data_new_0)
 
-        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, data_new_0)
+        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, data_new_clean)
 
-        doc_old_0 = await self._find_one_by_id(ref, _id)
+        doc_old_0 = await self._find_one_by_id(ref, _id, skip_cache=True)
 
         #await doc_old_0.check()
 
@@ -236,10 +236,11 @@ class Engine(elephant.Engine):
             raise Exception(f"Error updating document. Document not found ref = {ref} id = {_id}")
 
         # check before any database operations
-        doc_new_1 = copy.deepcopy(doc_old_0.d)
-        doc_new_1.update(data_new_0)
-        f0 = await self._factory(doc_new_1, False)
-        await f0.check_0()
+        _ = copy.deepcopy(doc_new_encoded)
+        _["_id"] = _id
+
+        obj_new = await self._factory(_, False)
+        await obj_new.check_0()
 
         # check permissions
         # TODO use query to do this
@@ -252,33 +253,36 @@ class Engine(elephant.Engine):
         # for doc_1, encode the data
         # this way we are compaing what will be stored in the DB
   
-        doc_old_1 = aardvark.util.clean(doc_old_0._d)
+        doc_old_clean = aardvark.util.clean(doc_old_0._d)
 
         el0 = doc_old_0.d['_elephant']
         el1 = dict(el0)
 
         assert ref == el0['ref']
 
-        diffs = list(aardvark.diff(doc_old_1, doc_new_encoded))
+        diffs = list(aardvark.diff(doc_old_clean, doc_new_encoded))
 
-        # update the old document object
+        logger.info('old')
+        for line in elephant.util.lines(pprint.pprint, doc_old_clean):
+            logger.info(f'  {line}')
 
-        #_ = aardvark.util.clean(doc_old_0.d)
+        logger.info('new')
+        for line in elephant.util.lines(pprint.pprint, doc_new_encoded):
+            logger.info(f'  {line}')
+        
+
+        logger.info('diffs')
+        for diff in diffs:
+            logger.info(f'  {diff}')
+
 
         #elephant.check.check(_, copy.deepcopy)
         #copy.deepcopy(_)
 
         #aardvark.apply(_, diffs)
 
-        #doc_old_0.d.update(_)
 
-        doc_old_0.d.update(data_new_0)
 
-        # might not have _temp field, next line would fail if not
-        await doc_old_0.update_temp(user)
-
-        # make sure new data passes checks
-        await doc_old_0.check()
 
         # update temp
 
@@ -286,6 +290,14 @@ class Engine(elephant.Engine):
 
         if not diffs:
             logger.info("diffs is empty")
+
+            # because update_temp may fail without this
+            obj_new.d["_elephant"] = el0
+
+            await obj_new.update_temp(user)
+            await obj_new.check()
+
+            temp_1 = obj_new.d["_temp"]
 
             try:
                 await doc_old_0.update_temp(user)
@@ -299,12 +311,12 @@ class Engine(elephant.Engine):
 
             else:
 
-                if doc_old_0.d.get("_temp", {}) != temp_old:
+                if temp_1 != temp_old:
                     logger.info('document unchanged but temp change')
-                    update = {'$set': {"_temp": await doc_old_0.temp_to_array(user)}}
+                    update = {'$set': {"_temp": await obj_new.temp_to_array(user)}}
                     res = self.coll.files.update_one({'_id': _id}, update)
                 
-                return doc_old_0
+                return obj_new
 
 
         # create commit
@@ -327,15 +339,7 @@ class Engine(elephant.Engine):
 
         update['$set']['_elephant'] = el1
 
-        update['$set']['_temp'] = await elephant.util.encode(
-                self.h, 
-                user, 
-                elephant.EncodeMode.DATABASE,
-                doc_old_0.d["_temp"])
-
         elephant.check.check(update, bson.json_util.dumps)
-
-        pprint.pprint(update)
 
         res = self.coll.files.update_one({'_id': _id}, update)
 
@@ -343,9 +347,16 @@ class Engine(elephant.Engine):
 
         # update the document object
 
-        doc_old_0.d["_elephant"] = el1
+        obj_new.d["_elephant"] = el1
 
-        return doc_old_0
+        # might not have _temp field, next line would fail if not
+        await obj_new.update_temp(user)
+        await obj_new.update_stored_temp(user)
+
+        # make sure new data passes checks
+        await obj_new.check()
+
+        return obj_new
 
     def _assert_elephant(self, f, f0):
         if '_elephant' not in f:
@@ -398,8 +409,8 @@ class Engine(elephant.Engine):
 
         return a
 
-    async def _find_one_by_id(self, ref, _id):
-        return await self._find_one(ref, {"_id": _id})
+    async def _find_one_by_id(self, ref, _id, skip_cache=False, ):
+        return await self._find_one(ref, {"_id": _id}, skip_cache=skip_cache, )
 
     async def find_one_by_id(self, user, ref, _id):
         return await self.find_one(user, ref, {"_id": _id})
@@ -419,7 +430,8 @@ class Engine(elephant.Engine):
         # needed if reference is to older version. see second method in _find_one function
         # but have option to not get temp if this is to be a subobject
         if temp:
-            await d.update_temp(user)
+            #await d.update_temp(user)
+            pass
         else:
             d.clear_temp()
 
@@ -430,15 +442,15 @@ class Engine(elephant.Engine):
 
         return d
 
-    async def _find_one(self, ref, filt={}):
-
-        breakpoint()
+    async def _find_one(self, ref, filt={}, skip_cache=False, ):
 
         # hide hidden docs
-        if "hide" in filt: raise Exception('query contains reserved field "hide"')
+        if "hide" in filt:
+            raise Exception('query contains reserved field "hide"')
+
         filt["hide"] = {"$not": {"$eq": True}}
 
-        logger.info('query')
+        logger.info('query:')
         for line in elephant.util.lines(pprint.pprint, filt):
             logger.info(f'  {line}')
 
@@ -453,7 +465,7 @@ class Engine(elephant.Engine):
             logger.info(f'  {line}')
         
 
-        f0 = await self._factory(f, False)
+        f0 = await self._factory(f, False, skip_cache=skip_cache, )
  
         # TODO do we really need this?
         if f.get('_root', False): return f0
@@ -463,6 +475,13 @@ class Engine(elephant.Engine):
         if (ref is None) or (ref == f['_elephant']['ref']) or (ref == f["_elephant"]["refs"][f["_elephant"]["ref"]]):
 
             logger.info('ref matches. return')
+
+            if f0.d.get("hide", False):
+
+                logger.info('d:')
+                for line in elephant.util.lines(pprint.pprint, f0.d): logger.info(f'  {line}')
+
+                raise Exception('document should not have matched query')
             
             #commits = list(self.coll.commits.find({"file": f["_id"]}))
             #f["_temp"] = {}
@@ -471,6 +490,8 @@ class Engine(elephant.Engine):
             return f0
 
         else:
+
+            logger.info(crayons.yellow('req does not match. reconstruct other version'))
             
             #await f0.update_temp(user)
 

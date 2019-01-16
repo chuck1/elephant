@@ -4,13 +4,6 @@ import aardvark
 
 logger = logging.getLogger(__name__)
 
-def compare(a, b):
-    for diff in aardvark.diff(a, b):
-        logger.info(f'{diff}')
-
-        if isinstance(diff, aardvark.OperationReplace):
-            if diff.b == []:
-                raise Exception()
 
 class EncodeMode(enum.Enum):
     CLIENT   = 0
@@ -53,10 +46,26 @@ class Engine:
                         #doc_0.d = decoded
                         #doc_0._d = encoded
 
-                        compare(doc_0.d, decoded)
+                        diffs_0 = list(aardvark.diff(doc_0.d, decoded))
+                        diffs_1 = list(aardvark.diff(doc_0._d, encoded))
 
-                        doc_0.d.update(decoded)
-                        doc_0._d.update(encoded)
+                        for diff in diffs_0:
+                            logger.info(f'{diff}')
+                    
+                            if isinstance(diff, aardvark.OperationReplace):
+                                if diff.b == []:
+                                    raise Exception()
+                    
+
+                        # TODO might need way to apply in-place
+                        doc_0.d  = aardvark.apply(doc_0.d,  diffs_0) #.update(decoded)
+                        doc_0._d = aardvark.apply(doc_0._d, diffs_1) #.update(encoded)
+
+                        for diff in diffs_0:
+                            if isinstance(diff, aardvark.OperationRemove):
+                                k = diff.address.lines[0].key
+                                assert k not in doc_0.d
+                                logger.info(f'verified that {k!r} is not in d')
     
                         return doc_0
 
