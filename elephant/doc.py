@@ -33,7 +33,7 @@ class DEP_AArray:
 
 class Doc:
     async def __encode__(self, h, user, mode):
-        args = [dict(self.d), self.is_subobject]
+        args = [copy.deepcopy(self.d), self.is_subobject]
         return {'Document': await elephant.util.encode(h, user, mode, args)}
 
     def __init__(self, e, d, _d, is_subobject=False):

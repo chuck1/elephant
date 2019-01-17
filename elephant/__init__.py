@@ -54,7 +54,7 @@ class Engine:
                     
                             if isinstance(diff, aardvark.OperationReplace):
                                 if diff.b == []:
-                                    raise Exception()
+                                    raise Exception(f'{diff}')
                     
 
                         # TODO might need way to apply in-place
@@ -63,9 +63,10 @@ class Engine:
 
                         for diff in diffs_0:
                             if isinstance(diff, aardvark.OperationRemove):
-                                k = diff.address.lines[0].key
-                                assert k not in doc_0.d
-                                logger.info(f'verified that {k!r} is not in d')
+                                if len(diff.address.lines) == 1:
+                                    k = diff.address.lines[0].key
+                                    if k in doc_0.d:
+                                        raise Exception(f'{k!r} should not be in d. diff = {diff}')
     
                         return doc_0
 

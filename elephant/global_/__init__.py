@@ -247,9 +247,34 @@ class Engine(elephant.Engine):
 
         return f
 
+    
+    async def diffs(self, user, file_id, doc_new_0):
+        if file_id is None:
+            raise Exception()
+
+        doc_new_clean = aardvark.util.clean(doc_new_0)
+
+        # check before any database operations
+        _ = await self._factory(copy.deepcopy(doc_new_clean), False)
+        await _.check_0()
+
+        # get existing document
+        # skip cache so that a new object is created. otherwise there could be circular logic
+        obj_old = await self._find_one_by_id(file_id, check=False, skip_cache=True, )
+
+        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_clean)
+
+        diffs = list(aardvark.diff(
+                await obj_old.clean_encode(user),
+                doc_new_encoded,
+                ))
+
+        return obj_old, doc_new_encoded, diffs
+
     async def put(self, user, file_id, doc_new_0):
 
-
+        # hope to avoid bugs
+        doc_new_0 = copy.deepcopy(doc_new_0)
 
 
         def print_temp(temp):
@@ -272,49 +297,40 @@ class Engine(elephant.Engine):
         if file_id is None:
             return await self.put_new(user, doc_new_0)
 
-        doc_new_clean = aardvark.util.clean(doc_new_0)
 
-        # check before any database operations
-        _ = await self._factory(copy.deepcopy(doc_new_clean), False)
-        await _.check_0()
 
-        # get existing document
-        # skip cache so that a new object is created. otherwise there could be circular logic
-        obj_old = await self._find_one_by_id(file_id, check=False, skip_cache=True, )
+        obj_old, doc_new_encoded, diffs = await self.diffs(user, file_id, doc_new_0)
 
-        doc_new_encoded = await elephant.util.encode(self.h, user, elephant.EncodeMode.DATABASE, doc_new_clean)
-
-        diffs = list(aardvark.diff(
-                await obj_old.clean_encode(user),
-                doc_new_encoded,
-                ))
 
         # construct new object
-        _ = copy.deepcopy(obj_old._d)
-        _.update(doc_new_encoded)
+        _ = copy.deepcopy(doc_new_encoded)
+        _["_id"] = obj_old.d["_id"]
+        _["_elephant"] = obj_old.d["_elephant"]
         obj_new = await self._factory(_, False)
 
  
         logger.info(f'obj_new update_temp {obj_new}')
         await obj_new.update_temp(user)
-        #await obj_new.due_auto(user)
-
-
-        temp_0 = obj_old.d.get("_temp", {})
-        temp_1 = obj_new.d.get("_temp", {})
-        diffs_1 = list(aardvark.diff(temp_0, temp_1))
-
-        logger.info('diffs in temp')
-        for diff in diffs_1:
-            logger.info(f'  {diff.address}')
-
-        logger.info('temp_0')
-        print_temp(temp_0)
-
-        logger.info('temp_1')
-        print_temp(temp_1)
 
         if not diffs:
+
+            #await obj_new.due_auto(user)
+    
+    
+            temp_0 = obj_old.d.get("_temp", {})
+            temp_1 = obj_new.d.get("_temp", {})
+
+            diffs_1 = list(aardvark.diff(temp_0, temp_1))
+    
+            logger.info('diffs in temp')
+            for diff in diffs_1:
+                logger.info(f'  {diff.address}')
+    
+            logger.info('temp_0')
+            print_temp(temp_0)
+    
+            logger.info('temp_1')
+            print_temp(temp_1)
 
             #logger.info("change in listeners")
             #logger.info(obj_old.d["_temp"]["listeners"])
