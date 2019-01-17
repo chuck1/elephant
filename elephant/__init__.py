@@ -41,7 +41,7 @@ class Engine:
                         #logger.warning(f'return cached object')
     
                         # overwrite data in existing
-                        logger.info('overwriting data in existing object')
+                        logger.info(f'overwriting data in existing object {encoded["_id"]}')
                         
                         #doc_0.d = decoded
                         #doc_0._d = encoded
@@ -50,7 +50,7 @@ class Engine:
                         diffs_1 = list(aardvark.diff(doc_0._d, encoded))
 
                         for diff in diffs_0:
-                            logger.info(f'{diff}')
+                            logger.info(f'  {type(diff)} {[a.key for a in diff.address.lines]}')
                     
                             if isinstance(diff, aardvark.OperationReplace):
                                 if diff.b == []:

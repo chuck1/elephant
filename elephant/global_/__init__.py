@@ -298,11 +298,14 @@ class Engine(elephant.Engine):
             return await self.put_new(user, doc_new_0)
 
 
+        logger.info(f"calculate diffs")
 
         obj_old, doc_new_encoded, diffs = await self.diffs(user, file_id, doc_new_0)
 
 
         # construct new object
+        logger.info(f"construct new object")
+
         _ = copy.deepcopy(doc_new_encoded)
         _["_id"] = obj_old.d["_id"]
         _["_elephant"] = obj_old.d["_elephant"]
