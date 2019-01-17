@@ -152,7 +152,7 @@ class Doc(elephant.doc.Doc):
 
     async def put(self, user):
         ret = await self.e.put(user, self.d["_elephant"]["ref"], self.d["_id"], self.d)
-        assert ret is self
+        #assert ret is self
         return ret
 
     async def delete(self, user):

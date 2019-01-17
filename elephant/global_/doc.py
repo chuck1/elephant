@@ -125,7 +125,7 @@ class Doc(elephant.doc.Doc):
 
         ret = await self.e.put(user, self.d["_id"], self.d)
       
-        assert ret is self
+        #assert ret is self
  
         return ret
 

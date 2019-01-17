@@ -24,6 +24,8 @@ class Engine:
 
         o = self._doc_class(self, decoded, encoded, is_subobject, *args)
 
+        skip_cache=True
+
         if not skip_cache:
             if "_id" in decoded:
                 if decoded["_id"] in self._cache:
