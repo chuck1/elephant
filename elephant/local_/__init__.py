@@ -460,9 +460,9 @@ class Engine(elephant.Engine):
 
         if f is None: return None
 
-        logger.info('encoded')
+        logger.debug('encoded')
         for line in elephant.util.lines(pprint.pprint, f):
-            logger.info(f'  {line}')
+            logger.debug(f'  {line}')
         
 
         f0 = await self._factory(f, False, skip_cache=skip_cache, )
